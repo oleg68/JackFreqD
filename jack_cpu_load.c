@@ -37,7 +37,7 @@ void jack_shutdown (void *arg) {
 }
 
 int jjack_open () {
-	jack_options_t options = JackNullOption;
+	jack_options_t options = JackNoStartServer;
 	jack_status_t status;
 
 	client = jack_client_open ("jack_cpu_load", options, &status);
