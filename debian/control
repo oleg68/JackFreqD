@@ -1,0 +1,22 @@
+Source: jackfreqd
+Section: admin
+Priority: optional
+Maintainer: Robin Gareus <robin@gareus.org>
+Build-Depends: debhelper (>= 7), libjack-dev | libjack-jackd2-dev
+Standards-Version: 3.7.3
+
+Package: jackfreqd
+Architecture: any
+Depends: ${shlibs:Depends}
+Conflicts: cpudyn, cpufreqd, powernowd
+Description: control CPU speed according to JACK DSP load
+ This simple client controls CPU speed and voltage using the sysfs interface
+ to the CPUFreq driver in v2.6 Linux kernels. It does not depend on APM or
+ ACPI, and it doesn't try to do anything other than control the CPU via
+ the userspace governor and sysfs.
+ .
+ jackfreqd is a variant of powernowd tailored for pro-audio work.
+ .
+ The CPU-frequency is scaled depending on DSP and system-load. 
+ On multi-threaded system the system-load may still be too low for a
+ default governor to kick in while DSP load is already at the limit.
