@@ -302,7 +302,7 @@ int change_speed(cpuinfo_t *cpu, enum modes mode) {
 			cpu->speed_index++;
 	}
 	pprintf(4,"mode=%d", mode);
-  return set_speed(cpu);
+	return set_speed(cpu);
 }
 
 /* 
@@ -619,48 +619,50 @@ void get_jack_uid() {
 
 /* set process user and group(s) id */
 void drop_privileges(char *setgid_group, char *setuid_user) {
-  int uid=0, gid=0;
-  struct group *gr;
-  struct passwd *pw;
+	int uid=0, gid=0;
+	struct group *gr;
+	struct passwd *pw;
 
-  /* Get the integer values */
-  if(setgid_group) {
-    gr=getgrnam(setgid_group);
-    if(gr)
-      gid=gr->gr_gid;
-    else if(atoi(setgid_group)) /* numerical? */
-      gid=atoi(setgid_group);
-    else {
-      pprintf(0, "Failed to get GID for group %s\n", setgid_group);
-      terminate(0);
-    }
-  }
+	/* Get the integer values */
+	if(setgid_group) {
+		gr=getgrnam(setgid_group);
+		if(gr) 
+			gid=gr->gr_gid;
+		else if(atoi(setgid_group)) /* numerical? */
+			gid=atoi(setgid_group);
+		else {
+			pprintf(0, "Failed to get GID for group %s\n", setgid_group);
+			terminate(0);
+		}
+	}
 	if(setuid_user) {
-    pw=getpwnam(setuid_user);
-    if(pw)
-      uid=pw->pw_uid;
-    else if(atoi(setuid_user)) /* numerical? */
-      uid=atoi(setuid_user);
-    else {
-      pprintf(0, "Failed to get UID for user %s\n", setuid_user);
-      terminate(0);
-    }
-  }
-  if (gid || uid) pprintf(3, "assume user: uid:%i gid:%i  -> uid:%i gid:%i\n",getuid(),getgid(),uid,gid);
+		pw=getpwnam(setuid_user);
+		if(pw)
+			uid=pw->pw_uid;
+		else if(atoi(setuid_user)) /* numerical? */
+			uid=atoi(setuid_user);
+		else {
+			pprintf(0, "Failed to get UID for user %s\n", setuid_user);
+			terminate(0);
+		}
+	}
+	if (gid || uid) 
+		pprintf(3, "assume user: uid:%i gid:%i  -> uid:%i gid:%i\n",
+				getuid(),getgid(),uid,gid);
 
-  /* Set uid and gid */
-  if(gid) {
-    if(setgid(gid)) {
-      pprintf(0, "setgid failed.\n");
-      terminate(0);
-    }
-  }
+	/* Set uid and gid */
+	if(gid) {
+		if(setgid(gid)) {
+			pprintf(0, "setgid failed.\n");
+			terminate(0);
+		}
+	}
 	if(uid) {
-    if(setuid(uid)) {
-      pprintf(0, "setuid failed.\n");
-      terminate(0);
-    }
-  }
+		if(setuid(uid)) {
+			pprintf(0, "setuid failed.\n");
+			terminate(0);
+		}
+	}
 }
 
 
@@ -785,7 +787,7 @@ int determine_threads_per_core(int ncpus) {
 int main (int argc, char **argv) {
 	cpuinfo_t *cpu;
 	int ncpus, i, j, err, num_real_cpus, threads_per_core, cpubase;
-  struct timespec pollts;
+	struct timespec pollts;
 	enum modes change, change2;
 
 	/* Parse command line args */
@@ -1005,12 +1007,12 @@ int main (int argc, char **argv) {
 
 	if (!jack_uid && !jack_reconnect) {
 		pprintf(0, "No JACK-uid given or detected.\n");
-    terminate(0);
+		terminate(0);
 	}
 
-  if (jjack_open() && !jack_reconnect) {
+	if (jjack_open() && !jack_reconnect) {
 		pprintf(0, "Failed to connect to jackd\n");
-    terminate(0);
+		terminate(0);
 	}
 
 	/* now that everything's all set up, lets set up a exit handler */
