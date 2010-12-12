@@ -36,6 +36,16 @@ enum modes {
 	RAISE
 };
 
+typedef struct cpustats {
+	unsigned long long user;
+	unsigned long long mynice;
+	unsigned long long system;
+	unsigned long long idle;
+	unsigned long long iowait;
+	unsigned long long irq;
+	unsigned long long softirq;
+} cpustats_t;
+
 typedef struct cpuinfo {
 	unsigned int cpuid;
 	unsigned int nspeeds;
@@ -43,7 +53,10 @@ typedef struct cpuinfo {
 	unsigned int min_speed;
 	unsigned int current_speed;
 	unsigned int speed_index;
+	cpustats_t *last_reading;
+	cpustats_t *reading;
 	int fd;
+	int wfd;
 	char *sysfs_dir;
 	int in_mhz; /* 0 = speed in kHz, 1 = speed in mHz */
 	unsigned long *freq_table;
@@ -60,6 +73,8 @@ static char buf[1024];
 /* options */
 int daemonize = 0;
 int verbosity = 0;
+int ignore_nice = 1;
+int use_cpu_load = 0;
 unsigned int poll = 250; /* in msecs */
 char *jack_uid = NULL;
 char *jack_gid = NULL;
@@ -92,6 +107,8 @@ void help(void) {
 	printf(" -h        Print this help message\n");
 	printf(" -d        detach from terminal - daemonize\n");
 	printf(" -v        Increase output verbosity, can be used more than once.\n");
+	printf(" -p        Combine DSP and CPU load.\n");
+	printf(" -n        Include 'nice'd processes in calculations\n");
 	printf(" -q        Quiet mode, only emergency output.\n");
 	printf(" -s #      Frequency step in kHz (default = 100000)\n");
 	printf(" -p #      Polling frequency in msecs (default = 250)\n");
@@ -153,14 +170,14 @@ int set_speed(cpuinfo_t *cpu) {
 
 	change_speed_count++;
 
-	lseek(cpu->fd, 0, SEEK_CUR);
+	lseek(cpu->wfd, 0, SEEK_CUR);
 	
 	sprintf(writestr, "%d\n", (cpu->in_mhz) ?
 			(cpu->current_speed / 1000) : cpu->current_speed); 
 
 	pprintf(4,"str=%s", writestr);
 	
-	if ((len = write(cpu->fd, writestr, strlen(writestr))) < 0) {
+	if ((len = write(cpu->wfd, writestr, strlen(writestr))) < 0) {
 		err = errno;
 		perror("Couldn't write to scaling_setspeed\n");
 		return err;
@@ -170,9 +187,82 @@ int set_speed(cpuinfo_t *cpu) {
 		printf("Could not write scaling_setspeed\n");
 		return EPIPE;
 	}
-	fsync(cpu->fd);
+	fsync(cpu->wfd);
 
 	return 0;
+}
+
+/*
+ * Reads /proc/stat into buf, and parses the output.
+ *
+ * Format of line:
+ * ...
+ * cpu<id> <user> <nice> <system> <idle> <iowait> <irq> <softirq>
+ */
+int get_stat(cpuinfo_t *cpu) {
+	char *p1, *p2, searchfor[10];
+	int err;
+	
+	if ((err = read_file("/proc/stat", cpu->fd, 0)) != 0) {
+		return err;
+	}
+
+	sprintf(searchfor, "cpu%d ", cpu->cpuid);
+
+	p1 = strstr(buf, searchfor);
+	if (p1 == NULL) {
+		perror("Error parsing /proc/stat");
+		return ENOENT;
+	}
+	
+	p2 = p1+strlen(searchfor);
+
+	memcpy(cpu->last_reading, cpu->reading, sizeof(cpustats_t));
+	
+	cpu->reading->user = strtoll(p2, &p2, 10);
+	cpu->reading->mynice = strtoll(p2, &p2, 10);
+	cpu->reading->system = strtoll(p2, &p2, 10);
+	cpu->reading->idle = strtoll(p2, &p2, 10);
+	cpu->reading->iowait = strtoll(p2, &p2, 10);
+	cpu->reading->irq = strtoll(p2, &p2, 10);
+	cpu->reading->softirq = strtoll(p2, &p2, 10);
+
+	return 0;
+}
+
+float calc_stat(cpuinfo_t *cpu) {
+	int err;
+	float pct;
+	unsigned long long usage, total;
+
+	if ((err = get_stat(cpu)) < 0) {
+		perror("Can't get stats");
+		return -1;
+	}
+
+	total = (cpu->reading->user - cpu->last_reading->user) +
+		(cpu->reading->system - cpu->last_reading->system) +
+		(cpu->reading->mynice - cpu->last_reading->mynice) +
+		(cpu->reading->idle - cpu->last_reading->idle) +
+		(cpu->reading->iowait - cpu->last_reading->iowait) +
+		(cpu->reading->irq - cpu->last_reading->irq) +
+		(cpu->reading->softirq - cpu->last_reading->softirq);
+
+	if (ignore_nice) { 
+		usage = (cpu->reading->user - cpu->last_reading->user) +
+			(cpu->reading->system - cpu->last_reading->system) +
+			(cpu->reading->irq - cpu->last_reading->irq) +
+			(cpu->reading->softirq - cpu->last_reading->softirq);
+	} else {
+		usage = (cpu->reading->user - cpu->last_reading->user) +
+			(cpu->reading->mynice - cpu->last_reading->mynice) +
+			(cpu->reading->system - cpu->last_reading->system) +
+			(cpu->reading->irq - cpu->last_reading->irq) +
+			(cpu->reading->softirq - cpu->last_reading->softirq);
+	}
+	
+	pct = ((float)usage)/((float)total);
+	return pct;
 }
 
 int change_speed(cpuinfo_t *cpu, enum modes mode) {
@@ -349,6 +439,11 @@ int get_per_cpu_info(cpuinfo_t *cpu, int cpuid) {
 		}
 	}
 	
+	cpu->last_reading = (cpustats_t *)malloc(sizeof(cpustats_t));
+	cpu->reading = (cpustats_t *)malloc(sizeof(cpustats_t));
+	memset(cpu->last_reading, 0, sizeof(cpustats_t));
+	memset(cpu->reading, 0, sizeof(cpustats_t));
+	
 	/*
 	 * Some cpufreq drivers (longhaul) report speeds in MHz instead
 	 * of KHz.  Assume for now that any currently supported cpufreq 
@@ -367,10 +462,23 @@ int get_per_cpu_info(cpuinfo_t *cpu, int cpuid) {
 		cpu->min_speed *= 1000;
 		cpu->current_speed *= 1000;
 	}
+	
+	if (use_cpu_load) {
+		if ((cpu->fd = open("/proc/stat", O_RDONLY)) < 0) {
+			err = errno;
+			perror("can't open /proc/stat");
+			return err;
+		}
+		
+		if ((err = get_stat(cpu)) < 0) {
+			perror("can't read /proc/stat");
+			return err;
+		}
+	}
 
 	strncpy(scratch, cpu->sysfs_dir, 50);
 	strncat(scratch, SYSFS_SETSPEED, 20);
-	if ((cpu->fd = open(scratch, O_WRONLY)) < 0) {
+	if ((cpu->wfd = open(scratch, O_WRONLY)) < 0) {
 		err = errno;
 		perror("Can't open scaling_setspeed");
 		return err;
@@ -384,11 +492,27 @@ int get_per_cpu_info(cpuinfo_t *cpu, int cpuid) {
 /*
  * The heart of the program... decide to raise or lower the speed.
  */
-enum modes inline decide_speed(cpuinfo_t *cpu, float load) {
-	if (load > highwater && (cpu->current_speed != cpu->max_speed)) {
+enum modes inline decide_speed(cpuinfo_t *cpu, float dspload) {
+	if (use_cpu_load) {
+		float pct;
+		if ((pct = calc_stat(cpu)) < 0) {
+			return SAME; // error
+		}
+		if (((dspload > highwater) || (pct >= ((float)highwater/100.0))) 
+				&& (cpu->current_speed != cpu->max_speed)) {
+			return RAISE;
+		}
+		else if (((dspload < lowwater) && (pct <= ((float)lowwater/100.0))) 
+		         && (cpu->current_speed != cpu->min_speed)) {
+			return LOWER;
+		}
+		return SAME;
+	}
+
+	if (dspload > highwater && (cpu->current_speed != cpu->max_speed)) {
 		return RAISE;
 	}
-	else if (load < lowwater && (cpu->current_speed != cpu->min_speed)) {
+	else if (dspload < lowwater && (cpu->current_speed != cpu->min_speed)) {
 		return LOWER;
 	}
 	return SAME;
@@ -428,7 +552,10 @@ void terminate(int signum) {
 
 	for(i = 0; i < ncpus; i++) {
 		cpu = all_cpus[i];
+		if (cpu->wfd) close(cpu->wfd);
 		if (cpu->fd) close(cpu->fd);
+		free(cpu->last_reading);
+		free(cpu->reading);
 		free(cpu->sysfs_dir);
 		free(cpu->freq_table);
 		free(cpu);
@@ -627,13 +754,19 @@ int main (int argc, char **argv) {
 	while(1) {
 		int c;
 
-		c = getopt(argc, argv, "dnvqc:u:s:l:j:J:h");
+		c = getopt(argc, argv, "dnvqPc:u:s:l:j:J:h");
 		if (c == -1)
 			break;
 
 		switch(c) {
 			case 'd':
-				daemonize = 0;
+				daemonize = 1;
+				break;
+			case 'P':
+				use_cpu_load = 1;
+				break;
+			case 'n':
+				ignore_nice = 0;
 				break;
  			case 'v':
  				verbosity++;
