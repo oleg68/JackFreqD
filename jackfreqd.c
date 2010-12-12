@@ -43,7 +43,7 @@ typedef struct cpuinfo {
 	unsigned int min_speed;
 	unsigned int current_speed;
 	unsigned int speed_index;
-	//int fd;
+	int fd;
 	char *sysfs_dir;
 	int in_mhz; /* 0 = speed in kHz, 1 = speed in mHz */
 	unsigned long *freq_table;
@@ -59,7 +59,12 @@ static char buf[1024];
 
 /* options */
 int daemonize = 0;
-int verbosity = 9;
+int verbosity = 0;
+unsigned int poll = 250; /* in msecs */
+char *jack_uid = NULL;
+char *jack_gid = NULL;
+unsigned int highwater = 50;
+unsigned int lowwater = 10;
 unsigned int cores_specified = 0;
 unsigned int step_specified = 0;
 unsigned int step = 100000;  /* in kHz */
@@ -73,6 +78,8 @@ int jjack_open();
 void jjack_close();
 float jjack_poll();
 
+int get_jack_proc (int *pid, int *gid);
+
 #define SYSFS_TREE "/sys/devices/system/cpu/"
 #define SYSFS_SETSPEED "scaling_setspeed"
 
@@ -83,6 +90,7 @@ void help(void)
 	
 	printf("JACKfreq Daemon v%s, (c) 2010 Robin Gareus\n", VERSION);
 	printf("\n");
+	printf(".. use the source..\n");
 	return;
 }
 
@@ -118,7 +126,7 @@ int read_file(const char *file, int fd, int new) {
 
 int set_speed(cpuinfo_t *cpu) {
 	cpuinfo_t *save;
-	int fd, len, err, i;
+	int len, err, i;
 	char writestr[100];
 	/* 
 	 * We need to set the current speed on all virtual CPUs that fall
@@ -134,24 +142,15 @@ int set_speed(cpuinfo_t *cpu) {
 	pprintf(3,"Setting speed to %d\n", cpu->current_speed);
 
 	change_speed_count++;
-	
-	strncpy(writestr, cpu->sysfs_dir, 50);
-	strncat(writestr, SYSFS_SETSPEED, 20);
-	
-	if ((fd = open(writestr, O_WRONLY)) < 0) {
-		err = errno;
-		perror("Can't open scaling_setspeed");
-		return err;
-	}
 
-	lseek(fd, 0, SEEK_CUR);
+	lseek(cpu->fd, 0, SEEK_CUR);
 	
 	sprintf(writestr, "%d\n", (cpu->in_mhz) ?
 			(cpu->current_speed / 1000) : cpu->current_speed); 
 
 	pprintf(4,"str=%s", writestr);
 	
-	if ((len = write(fd, writestr, strlen(writestr))) < 0) {
+	if ((len = write(cpu->fd, writestr, strlen(writestr))) < 0) {
 		err = errno;
 		perror("Couldn't write to scaling_setspeed\n");
 		return err;
@@ -159,10 +158,9 @@ int set_speed(cpuinfo_t *cpu) {
 
 	if (len != strlen(writestr)) {
 		printf("Could not write scaling_setspeed\n");
-		close(fd);
 		return EPIPE;
 	}
-	close(fd);
+	fsync(cpu->fd);
 
 	return 0;
 }
@@ -360,18 +358,13 @@ int get_per_cpu_info(cpuinfo_t *cpu, int cpuid) {
 		cpu->current_speed *= 1000;
 	}
 
-	/*
-	if ((cpu->fd = open("/proc/stat", O_RDONLY)) < 0) {
+	strncpy(scratch, cpu->sysfs_dir, 50);
+	strncat(scratch, SYSFS_SETSPEED, 20);
+	if ((cpu->fd = open(scratch, O_WRONLY)) < 0) {
 		err = errno;
-		perror("can't open /proc/stat");
+		perror("Can't open scaling_setspeed");
 		return err;
 	}
-	
-	if ((err = get_stat(cpu)) < 0) {
-		perror("can't read /proc/stat");
-		return err;
-	}
-	*/
 	
 	return 0;
 }
@@ -381,9 +374,13 @@ int get_per_cpu_info(cpuinfo_t *cpu, int cpuid) {
 /*
  * The heart of the program... decide to raise or lower the speed.
  */
-enum modes inline decide_speed(cpuinfo_t *cpu)
-{
-	pprintf(0, "dsp load: %.3f\n", jjack_poll());
+enum modes inline decide_speed(cpuinfo_t *cpu, float load) {
+	if (load > highwater && (cpu->current_speed != cpu->max_speed)) {
+		return RAISE;
+	}
+	else if (load < lowwater && (cpu->current_speed != cpu->min_speed)) {
+		return LOWER;
+	}
 	return SAME;
 }
 
@@ -393,12 +390,14 @@ enum modes inline decide_speed(cpuinfo_t *cpu)
  * Signal handler for SIGTERM/SIGINT... clean up after ourselves
  */
 void terminate(int signum) {
+	static int term = 0;
+	if (term) return;
+	term=1;
+
 	int ncpus, i;
 	cpuinfo_t *cpu;
 	
-	pprintf(0,"exiting: Closing JACK connection\n");
-	jjack_close();
-	pprintf(0,"exiting: resetting CPU to full speed..\n");
+	pprintf(4,"exiting: resetting CPU to full speed..\n");
 
 	ncpus = sysconf(_SC_NPROCESSORS_CONF);
 	if (ncpus < 1) ncpus = 1;
@@ -415,18 +414,23 @@ void terminate(int signum) {
 		change_speed(cpu, RAISE);
 	}
 
-	pprintf(1,"exiting: cleaning up.\n");
+	pprintf(4,"exiting: cleaning up 1/2.\n");
 
 	for(i = 0; i < ncpus; i++) {
 		cpu = all_cpus[i];
-		/* close the /proc/stat fd */
-		//close(cpu->fd);
-		/* deallocate everything */
+		if (cpu->fd) close(cpu->fd);
 		free(cpu->sysfs_dir);
 		free(cpu->freq_table);
 		free(cpu);
 	}
+	pprintf(4,"exiting: cleaning up 2/2.\n");
 	free(all_cpus);
+	if (jack_uid) free(jack_uid);
+	if (jack_gid) free(jack_gid);
+
+	pprintf(4,"exiting: closing JACK connection\n");
+	jjack_close();
+
 	time_t duration = time(NULL) - start_time;
 	pprintf(1,"Statistics:\n");
 	pprintf(1,"  %d speed changes in %d seconds\n",
@@ -452,7 +456,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
     else if(atoi(setgid_group)) /* numerical? */
       gid=atoi(setgid_group);
     else {
-      pprintf(0, "SYS: Failed to get GID for group %s\n", setgid_group);
+      pprintf(0, "Failed to get GID for group %s\n", setgid_group);
       terminate(0);
     }
   }
@@ -463,7 +467,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
     else if(atoi(setuid_user)) /* numerical? */
       uid=atoi(setuid_user);
     else {
-      pprintf(0, "SYS: Failed to get UID for user %s\n", setuid_user);
+      pprintf(0, "Failed to get UID for user %s\n", setuid_user);
       terminate(0);
     }
   }
@@ -472,13 +476,13 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
   /* Set uid and gid */
   if(gid) {
     if(setgid(gid)) {
-      pprintf(0, "SYS: setgid failed.\n");
+      pprintf(0, "setgid failed.\n");
       terminate(0);
     }
   }
 	if(uid) {
     if(setuid(uid)) {
-      pprintf(0, "SYS: setuid failed.\n");
+      pprintf(0, "setuid failed.\n");
       terminate(0);
     }
   }
@@ -613,7 +617,7 @@ int main (int argc, char **argv) {
 	while(1) {
 		int c;
 
-		c = getopt(argc, argv, "dnvqc:h");
+		c = getopt(argc, argv, "dnvqc:u:s:l:j:J:h");
 		if (c == -1)
 			break;
 
@@ -623,7 +627,7 @@ int main (int argc, char **argv) {
 				break;
  			case 'v':
  				verbosity++;
-				if (verbosity > 10) verbosity = 10;
+				if (verbosity > 5) verbosity = 5;
  				break;
  			case 'q':
  				verbosity = -1;
@@ -633,14 +637,65 @@ int main (int argc, char **argv) {
 				if (cores_specified < 1) {
 					printf("invalid number of cores/proc");
 					help();
-					exit(1);
+					exit(ENOTSUP);
 				}
+				break;
+			case 's':
+				step = strtol(optarg, NULL, 10);
+				if (step < 0) {
+					printf("step must be non-negative");
+					help();
+					exit(ENOTSUP);
+				}
+				step_specified = 1;
+				pprintf(2,"Using %dHz step.\n", step);
+				break;
+			case 'p':
+				poll = strtol(optarg, NULL, 10);
+				if (poll < 0) {
+					printf("poll must be non-negative");
+					help();
+					exit(ENOTSUP);
+				}
+				pprintf(2,"Polling every %d msecs\n", poll);
+				break;
+			case 'u':
+				highwater = strtol(optarg, NULL, 10);
+				if ((highwater < 0) || (highwater > 100)) {
+					printf("upper limit must be between 0 and 100\n");
+					help();
+					exit(ENOTSUP);
+				}
+				pprintf(2,"Using upper pct of %d%%\n",highwater);
+				break;
+			case 'l':
+				lowwater = strtol(optarg, NULL, 10);
+				if ((lowwater < 0) || (lowwater > 100)) {
+					printf("lower limit must be between 0 and 100\n");
+					help();
+					exit(ENOTSUP);
+				}
+				pprintf(2,"Using lower pct of %d%%\n",lowwater);
+				break;
+			case 'j':
+				if (jack_uid) free(jack_uid);
+				jack_uid = strdup(optarg);
+				break;
+			case 'J':
+				if (jack_gid) free(jack_gid);
+				jack_gid = strdup(optarg);
 				break;
 			case 'h':
 			default:
 				help();
 				return 0;
 		}
+	}
+
+	if (lowwater > highwater) {
+		printf("Invalid: lower pct higher than upper pct!\n");
+		help();
+		exit(ENOTSUP);
 	}
 
 	/* so we don't interfere with anything, including ourself */
@@ -679,8 +734,7 @@ int main (int argc, char **argv) {
 			ncpus, threads_per_core);
 		printf("WARN: Assuming 1.\n");
 		threads_per_core = 1;
-		/*help();
-		exit(ENOTSUP);*/
+		/*help(); exit(ENOTSUP); */
 	}
 	
 	num_real_cpus = ncpus/threads_per_core;
@@ -731,8 +785,20 @@ int main (int argc, char **argv) {
 		}
 	}
 
+	if (!jack_uid && !jack_gid) {
+		//try to detect user running 'jackd' or 'jackdbus'
+		int uid,gid;
+		if (!get_jack_proc (&uid, &gid)) {
+			jack_uid=calloc(16,sizeof(char));
+			jack_gid=calloc(16,sizeof(char));
+			sprintf(jack_uid,"%i", uid);
+			sprintf(jack_gid,"%i", gid);
+			pprintf(2, "jackd: uid:%i gid:%i\n", uid, gid);
+		}
+	}
+
 	// drop priv to jack-user
-  drop_privileges("audio", "rgareus");
+  drop_privileges(jack_gid, jack_uid);
 
   if (jjack_open()) {
 		pprintf(0, "Failed to connect to jackd\n");
@@ -749,21 +815,29 @@ int main (int argc, char **argv) {
 	start_time = time(NULL);
 
 	/* Now the main program loop */
-  unsigned int poll = 500; /* in msecs */
 	while(1) {
 		usleep(poll*1000);
+
+		float jack_load = jjack_poll();
+		pprintf(2, "dsp load: %.3f\n", jack_load);
+
 		for(i=0; i<num_real_cpus; i++) {
 			change = LOWER;
 			cpubase = i*threads_per_core;
-			pprintf(6, "i = %d, cpubase = %d, ",i,cpubase);
+			pprintf(4, "i = %d, cpubase = %d, ",i,cpubase);
 			/* handle SMT/CMP here */
 			for (j=0; j<all_cpus[cpubase]->threads_per_core; j++) {
-				change2 = decide_speed(all_cpus[cpubase+j]);
-				pprintf(6, "change = %d, change2 = %d\n",change,change2);
+				change2 = decide_speed(all_cpus[cpubase+j], jack_load);
+				pprintf(4, "change = %d, change2 = %d\n",change,change2);
 				if (change2 > change)
 					change = change2;
 			}
-			if (change != SAME) change_speed(all_cpus[cpubase], change);
+			if (change != SAME) {
+				if ((err=change_speed(all_cpus[cpubase], change))) {
+					pprintf(0, "changing CPU speed failed.\n");
+					terminate(0);
+				}
+			}
 		}
 	}
 

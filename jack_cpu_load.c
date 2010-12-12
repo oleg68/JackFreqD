@@ -41,8 +41,10 @@ int jjack_open () {
 }
 
 void jjack_close () {
-	if (client)
+	if (client) {
+		jack_deactivate (client);
 		jack_client_close (client);
+	}
 	client=NULL;
 }
 
