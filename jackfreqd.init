@@ -24,7 +24,7 @@ test -x $DAEMON || exit 0
 
 [ -f /etc/default/$NAME ] && . /etc/default/$NAME
 
-test "$ENABLE" == "true" || exit 0
+test "$ENABLE" = "true" || exit 0
 
 set -e
 
