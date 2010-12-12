@@ -16,12 +16,15 @@ DAEMON=/usr/sbin/jackfreqd
 NAME=jackfreqd
 DESC=jackfreqd
 OPTIONS="-P -w -q"
+ENABLE="true"
 
 test -x $DAEMON || exit 0
 
 # modify the file /etc/default/jackfreqd if you want to add personal options
 
 [ -f /etc/default/$NAME ] && . /etc/default/$NAME
+
+test "$ENABLE" == "true" || exit 0
 
 set -e
 
