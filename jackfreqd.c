@@ -1017,6 +1017,10 @@ int main (int argc, char **argv) {
 		terminate(0);
 	}
 
+	/* need to deaemonize before connecting to jackd */
+	if (daemonize)
+		daemon(0, 0);
+
 	if (jjack_open() && !jack_reconnect) {
 		pprintf(0, "Failed to connect to jackd\n");
 		terminate(0);
@@ -1026,9 +1030,6 @@ int main (int argc, char **argv) {
 	signal(SIGTERM, terminate);
 	signal(SIGINT, terminate);
 	
-	if (daemonize)
-		daemon(0, 0);
-
 	start_time = time(NULL);
 
 
