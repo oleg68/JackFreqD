@@ -6,7 +6,7 @@
 install: build
 	dh_testdir
 	dh_testroot
-	dh_clean -k 
+	dh_prep
 	dh_installdirs
 
 	install -o root -g root -m 0755 jackfreqd \
