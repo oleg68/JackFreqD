@@ -107,14 +107,14 @@ void help(void) {
 	printf(" -h        Print this help message\n");
 	printf(" -d        detach from terminal - daemonize\n");
 	printf(" -v        Increase output verbosity, can be used more than once.\n");
-	printf(" -P        Combine DSP and CPU load.\n");
-	printf(" -n        Include 'nice'd processes in calculations\n");
 	printf(" -q        Quiet mode, only emergency output.\n");
+	printf(" -P        Combine DSP and CPU load.\n");
+	printf(" -n        Include 'nice'd processes in calculations (only with -P)\n");
 	printf(" -s #      Frequency step in kHz (default = 100000)\n");
-	printf(" -p #      Polling frequency in msecs (default = 250)\n");
 	printf(" -c #      Specify number of threads per power-managed core\n");
 	printf(" -u #      DSP usage upper limit percentage [0 .. 100, default 50]\n");
 	printf(" -l #      DSP usage lower limit percentage [0 .. 100, default 10]\n");
+	printf(" -p #      Polling frequency in msecs (default = 250)\n");
 	printf(" -j <uid>  user-name or UID of jackd process (default: autodetect)\n");
 	printf(" -J <gid>  group-name or GID of jackd process (default: autodetect)\n");
 	printf("\n");
