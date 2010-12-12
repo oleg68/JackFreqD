@@ -3,3 +3,13 @@
 %:
 	dh $@
 
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k 
+	dh_installdirs
+
+	install -o root -g root -m 0755 jackfreqd \
+		debian/jackfreqd/usr/sbin/jackfreqd
+	#install -o root -g root -m 0755 debian/jackfreqd.default \
+	#	debian/jackfreqd/etc/default/jackfreqd
