@@ -120,7 +120,7 @@ int get_jack_proc (int *pid, int *gid);
 #define SYSFS_TREE "/sys/devices/system/cpu/"
 #define SYSFS_SETSPEED "scaling_setspeed"
 
-#define VERSION	"0.0.4"
+#define VERSION	"0.1.0"
 
 void help(void) {
 
