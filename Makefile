@@ -10,9 +10,12 @@ install: jackfreqd
 	install -o root -g root -m 755 -s jackfreqd $(DESTDIR)/usr/sbin
 	install -o root -g root -m 755 -d $(DESTDIR)/etc/init.d
 	install -o root -g root -m 755 jackfreqd.init $(DESTDIR)/etc/init.d/jackfreqd
+	install -o root -g root -m 755 -d $(DESTDIR)/usr/share/man/man1
+	install -o root -g root -m 644 jackfreqd.1 $(DESTDIR)/usr/share/man/man1/jackfreqd.1
 
 uninstall:
 	/bin/rm -f $(DESTDIR)/usr/sbin/jackfreqd
+	/bin/rm -f $(DESTDIR)/usr/share/man/man1/jackfreqd.1
 
 purge: uninstall
 	/bin/rm -f $(DESTDIR)/etc/init.d/jackfreqd
