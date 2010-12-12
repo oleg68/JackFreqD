@@ -674,8 +674,7 @@ static inline void cpuid(int op, int *eax, int *ebx, int *ecx, int *edx) {
  * will this one, because there's no way for me to bind to a processor.
  * (yet. :)
  */
-int determine_threads_per_core(int ncpus)
-{
+int determine_threads_per_core(int ncpus) {
 	char filename[100], *p1;
 	int err, count;
 
@@ -718,7 +717,7 @@ int determine_threads_per_core(int ncpus)
 		}
 		while ((err = strtol(p1, &p1, 5)) != 0)
 			count ++;
-		pprintf(1, "about to return count = %d\n", count);
+		pprintf(4, "about to return count = %d\n", count);
 		return count;	
 	}
 	pprintf(0,"err=%d", err);
@@ -949,7 +948,7 @@ int main (int argc, char **argv) {
 			jack_gid=calloc(16,sizeof(char));
 			sprintf(jack_uid,"%i", uid);
 			sprintf(jack_gid,"%i", gid);
-			pprintf(2, "jackd: uid:%i gid:%i\n", uid, gid);
+			pprintf(1, "jackd: uid:%i gid:%i\n", uid, gid);
 		}
 	}
 
@@ -975,7 +974,7 @@ int main (int argc, char **argv) {
 		usleep(poll*1000);
 
 		float jack_load = jjack_poll();
-		pprintf(2, "dsp load: %.3f\n", jack_load);
+		pprintf(4, "dsp load: %.3f\n", jack_load);
 
 		for(i=0; i<num_real_cpus; i++) {
 			change = LOWER;
