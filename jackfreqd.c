@@ -85,12 +85,22 @@ int get_jack_proc (int *pid, int *gid);
 
 #define VERSION	"0.0.0"
 
-void help(void)
-{
-	
+void help(void) {
+
 	printf("JACKfreq Daemon v%s, (c) 2010 Robin Gareus\n", VERSION);
+	printf("\nAvailable Options:\n");
+	printf(" -h        Print this help message\n");
+	printf(" -d        detach from terminal - daemonize\n");
+	printf(" -v        Increase output verbosity, can be used more than once.\n");
+	printf(" -q        Quiet mode, only emergency output.\n");
+	printf(" -s #      Frequency step in kHz (default = 100000)\n");
+	printf(" -p #      Polling frequency in msecs (default = 250)\n");
+	printf(" -c #      Specify number of threads per power-managed core\n");
+	printf(" -u #      DSP usage upper limit percentage [0 .. 100, default 50]\n");
+	printf(" -l #      DSP usage lower limit percentage [0 .. 100, default 10]\n");
+	printf(" -j <uid>  user-name or UID of jackd process (default: autodetect)\n");
+	printf(" -J <gid>  group-name or GID of jackd process (default: autodetect)\n");
 	printf("\n");
-	printf(".. use the source..\n");
 	return;
 }
 
