@@ -33,6 +33,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <pthread.h>
 
 #define pprintf(level, ...) do { \
 	if (level <= verbosity) { \
@@ -91,6 +92,7 @@ int use_cpu_load = 0;
 unsigned int poll = 1000; /* in msecs */
 char *jack_uid = NULL;
 char *jack_gid = NULL;
+int jack_reconnect = 0;
 unsigned int highwater_dsp = 50;
 unsigned int lowwater_dsp = 10;
 unsigned int highwater_cpu = 80;
@@ -98,6 +100,9 @@ unsigned int lowwater_cpu = 20;
 unsigned int cores_specified = 0;
 unsigned int step_specified = 0;
 unsigned int step = 100000;  /* in kHz */
+
+pthread_mutex_t poll_wait_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t  jack_trigger_cond = PTHREAD_COND_INITIALIZER;
 
 /* statistics */
 unsigned int change_speed_count = 0;
@@ -113,7 +118,7 @@ int get_jack_proc (int *pid, int *gid);
 #define SYSFS_TREE "/sys/devices/system/cpu/"
 #define SYSFS_SETSPEED "scaling_setspeed"
 
-#define VERSION	"0.0.1"
+#define VERSION	"0.0.2"
 
 void help(void) {
 
@@ -767,6 +772,7 @@ int determine_threads_per_core(int ncpus) {
 int main (int argc, char **argv) {
 	cpuinfo_t *cpu;
 	int ncpus, i, j, err, num_real_cpus, threads_per_core, cpubase;
+  struct timespec pollts;
 	enum modes change, change2;
 
 	/* Parse command line args */
@@ -1000,9 +1006,21 @@ int main (int argc, char **argv) {
 
 	start_time = time(NULL);
 
+
+	pthread_mutex_lock(&poll_wait_lock);
+
 	/* Now the main program loop */
 	while(1) {
-		usleep(poll*1000);
+		clock_gettime(CLOCK_REALTIME, &pollts);
+		pollts.tv_sec += poll/1000;
+		if (pollts.tv_nsec + ((poll%1000)*1000000) >= 1000000000) {
+			pollts.tv_sec += 1;
+		}
+		pollts.tv_nsec = (pollts.tv_nsec + ((poll%1000)*1000000))%1000000000;
+
+		pthread_cond_timedwait(&jack_trigger_cond, &poll_wait_lock, &pollts);
+
+		//usleep(poll*1000); // use interruptable sleep
 
 		float jack_load = jjack_poll();
 		pprintf(4, "dsp load: %.3f\n", jack_load);

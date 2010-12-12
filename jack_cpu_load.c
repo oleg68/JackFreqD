@@ -24,16 +24,43 @@
 #include <math.h>
 #include <signal.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <jack/jack.h>
 
 /* prototypes */
 void terminate(int signum);
+extern int jack_reconnect;
+extern pthread_cond_t jack_trigger_cond;
+extern int daemonize;
+extern int verbosity;
+
+#define pprintf(level, ...) do { \
+	if (level <= verbosity) { \
+		if (!daemonize) \
+			printf(__VA_ARGS__); \
+	} \
+} while(0)
 
 jack_client_t *client = NULL;
 
 void jack_shutdown (void *arg) {
-	fprintf (stderr, "jack-shutdown received, exiting ...\n");
-	terminate(0);
+	pprintf (0, "jack-shutdown received, exiting ...\n");
+	if (jack_reconnect) {
+		client=NULL;
+	} else {
+		terminate(0);
+	}
+}
+
+void jack_trigger_port (jack_port_id_t a, jack_port_id_t b, int connect, void *arg) {
+	pprintf (4, "jack-port-connect trigger..\n");
+	pthread_cond_signal(&jack_trigger_cond);
+}
+
+int jack_trigger_graph (void *arg) {
+	pprintf (4, "jack-graph trigger..\n");
+	pthread_cond_signal(&jack_trigger_cond);
+	return 0;
 }
 
 int jjack_open () {
@@ -42,18 +69,24 @@ int jjack_open () {
 
 	client = jack_client_open ("jack_cpu_load", options, &status);
 	if (!client) {
-		fprintf (stderr, "jack_client_open() failed, "
-		                 "status = 0x%2.0x\n", status);
+		pprintf (jack_reconnect?3:0, "jack_client_open() failed, "
+		    "status = 0x%2.0x\n", status);
 		if (status & JackServerFailed) {
-				fprintf (stderr, "Unable to connect to JACK server\n");
+				pprintf (jack_reconnect?3:0, "Unable to connect to JACK server\n");
 		}
+		client=NULL;
 		return(1);
 	}
   
 	jack_on_shutdown (client, jack_shutdown, 0);
+	jack_set_graph_order_callback(client, jack_trigger_graph, NULL);
+#if 0
+	jack_set_port_connect_callback(client, jack_trigger_port, NULL);
+#endif
 
 	if (jack_activate (client)) {
-		fprintf (stderr, "cannot activate client");
+		pprintf (jack_reconnect?3:0, "cannot activate client");
+		client=NULL;
 		return (1);
 	}
 	return (0);
@@ -68,7 +101,10 @@ void jjack_close () {
 }
 
 float jjack_poll () {
-	//if (!client) return 0;
+	if (!client) {
+		// TODO limit retries to 1 per 3 sec or so.
+		if (!jack_reconnect) return -1;
+	  if (!jjack_open()) return -1;
+	}
 	return(jack_cpu_load(client));
 }
-
