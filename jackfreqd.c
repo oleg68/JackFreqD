@@ -19,6 +19,7 @@
  * Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  
  *
  */
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <unistd.h>
@@ -195,7 +196,7 @@ int set_speed(cpuinfo_t *cpu) {
 	pprintf(3,"Setting speed to %d\n", cpu->current_speed);
 
 	change_speed_count++;
-#if 0	
+
 	strncpy(writestr, cpu->sysfs_dir, 50);
 	strncat(writestr, SYSFS_SETSPEED, 20);
 	
@@ -204,7 +205,6 @@ int set_speed(cpuinfo_t *cpu) {
 		perror("Can't open scaling_setspeed");
 		return err;
 	}
-#endif
 
 	lseek(cpu->wfd, 0, SEEK_CUR);
 	
@@ -223,12 +223,9 @@ int set_speed(cpuinfo_t *cpu) {
 		printf("Could not write scaling_setspeed\n");
 		return EPIPE;
 	}
-#if 0
+
 	close(cpu->wfd);
 	cpu->wfd=0;
-#else
-	fsync(cpu->wfd);
-#endif
 
 	return 0;
 }
@@ -516,19 +513,6 @@ int get_per_cpu_info(cpuinfo_t *cpu, int cpuid) {
 			return err;
 		}
 	}
-
-	strncpy(scratch, cpu->sysfs_dir, 50);
-	strncat(scratch, SYSFS_SETSPEED, 20);
-#if 0
-	cpu->wfd=0;
-#else
-	if ((cpu->wfd = open(scratch, O_WRONLY)) < 0) {
-		err = errno;
-		perror("Can't open scaling_setspeed");
-		return err;
-	}
-#endif
-	
 	return 0;
 }
 
@@ -671,19 +655,23 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 
 	/* Set uid and gid */
 	if(gid) {
-		if(setgid(gid)) {
+		if(setresgid(gid, gid, 0)) {
 			pprintf(0, "setgid failed.\n");
 			terminate(0);
 		}
 	}
 	if(uid) {
-		if(setuid(uid)) {
+		if(setresuid(uid, uid, 0)) {
 			pprintf(0, "setuid failed.\n");
 			terminate(0);
 		}
 	}
 }
 
+void restore_privileges() {
+	setresuid(0, 0, 0);
+	setresgid(0, 0, 0);
+}
 
 
 /* Generic x86 cpuid function lifted from kernel sources */
@@ -1072,8 +1060,12 @@ int main (int argc, char **argv) {
 			}
 			if (change != SAME) {
 				if ((err=change_speed(all_cpus[cpubase], change))) {
+#if 0
 					pprintf(0, "changing CPU speed failed.\n");
 					terminate(0);
+#else 
+					pprintf(2, "changing CPU speed failed.\n");
+#endif
 				}
 			}
 		}

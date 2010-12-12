@@ -21,7 +21,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <signal.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -30,10 +29,8 @@
 /* prototypes */
 void terminate(int signum);
 void drop_privileges(char *setgid_group, char *setuid_user);
+void restore_privileges();
 void get_jack_uid();
-
-/* globals */
-int did_setuid = 0;
 
 /* extern globals */
 extern int jack_reconnect;
@@ -77,12 +74,9 @@ int jjack_open () {
 	jack_status_t status;
 
 	// drop priv to jack-user
-	if (!did_setuid) {
-		if (!jack_uid) get_jack_uid();
-		if (!jack_uid) return -1;
-		drop_privileges(jack_gid, jack_uid);
-		did_setuid=1;
-	}
+	if (!jack_uid) get_jack_uid();
+	if (!jack_uid) return -1;
+	drop_privileges(jack_gid, jack_uid);
 
 	client = jack_client_open ("jack_cpu_load", options, &status);
 	if (!client) {
@@ -92,6 +86,7 @@ int jjack_open () {
 				pprintf (jack_reconnect?3:0, "Unable to connect to JACK server\n");
 		}
 		client=NULL;
+		restore_privileges();
 		return(1);
 	}
 
@@ -104,8 +99,10 @@ int jjack_open () {
 	if (jack_activate (client)) {
 		pprintf (jack_reconnect?3:0, "cannot activate client");
 		client=NULL;
+		restore_privileges();
 		return (1);
 	}
+	restore_privileges();
 	return (0);
 }
 
@@ -125,3 +122,4 @@ float jjack_poll () {
 	}
 	return(jack_cpu_load(client));
 }
+
