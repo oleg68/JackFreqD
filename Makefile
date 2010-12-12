@@ -12,10 +12,10 @@ install: jackfreqd
 	install -o root -g root -m 755 jackfreqd.init $(DESTDIR)/etc/init.d/jackfreqd
 
 uninstall:
-	/bin/rm $(DESTDIR)/usr/sbin/jackfreqd
+	/bin/rm -f $(DESTDIR)/usr/sbin/jackfreqd
 
 purge: uninstall
-	/bin/rm $(DESTDIR)/etc/init.d/jackfreqd
+	/bin/rm -f $(DESTDIR)/etc/init.d/jackfreqd
 
 clean:
 	/bin/rm -f jackfreqd procps jacktest jackxrun
