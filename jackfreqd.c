@@ -107,7 +107,7 @@ void help(void) {
 	printf(" -h        Print this help message\n");
 	printf(" -d        detach from terminal - daemonize\n");
 	printf(" -v        Increase output verbosity, can be used more than once.\n");
-	printf(" -p        Combine DSP and CPU load.\n");
+	printf(" -P        Combine DSP and CPU load.\n");
 	printf(" -n        Include 'nice'd processes in calculations\n");
 	printf(" -q        Quiet mode, only emergency output.\n");
 	printf(" -s #      Frequency step in kHz (default = 100000)\n");
