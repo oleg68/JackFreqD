@@ -84,6 +84,7 @@ typedef struct cpuinfo {
 /** globals */
 cpuinfo_t **all_cpus;
 static char buf[1024];
+int run = 1;
 
 /* options */
 int daemonize = 0;
@@ -119,7 +120,7 @@ int get_jack_proc (int *pid, int *gid);
 #define SYSFS_TREE "/sys/devices/system/cpu/"
 #define SYSFS_SETSPEED "scaling_setspeed"
 
-#define VERSION	"0.0.3"
+#define VERSION	"0.0.4"
 
 void help(void) {
 
@@ -554,8 +555,12 @@ enum modes inline decide_speed(cpuinfo_t *cpu, float dspload) {
  */
 void terminate(int signum) {
 	static int term = 0;
-	if (term) return;
+	if (term) {
+		pprintf(1, "DEBUG: terminate while shutdown in progres.\n");
+		exit(1);
+	}
 	term=1;
+	run=0;
 
 	int ncpus, i;
 	cpuinfo_t *cpu;
@@ -650,7 +655,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 		}
 	}
 	if (gid || uid) 
-		pprintf(3, "assume user: uid:%i gid:%i  -> uid:%i gid:%i\n",
+		pprintf(4, "set user: uid:%i gid:%i  -> uid:%i gid:%i\n",
 				getuid(),getgid(),uid,gid);
 
 	/* Set uid and gid */
@@ -1036,7 +1041,7 @@ int main (int argc, char **argv) {
 	pthread_mutex_lock(&poll_wait_lock);
 
 	/* Now the main program loop */
-	while(1) {
+	while(run) {
 		clock_gettime(CLOCK_REALTIME, &pollts);
 		pollts.tv_sec += poll/1000;
 		if (pollts.tv_nsec + ((poll%1000)*1000000) >= 1000000000) {
@@ -1072,5 +1077,6 @@ int main (int argc, char **argv) {
 		}
 	}
 
+	terminate(0);
 	return 0;
 }

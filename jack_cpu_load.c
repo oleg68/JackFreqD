@@ -23,16 +23,17 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <syslog.h>
 #include <pthread.h>
 #include <jack/jack.h>
 
 /* prototypes */
-void terminate(int signum);
 void drop_privileges(char *setgid_group, char *setuid_user);
 void restore_privileges();
 void get_jack_uid();
 
 /* extern globals */
+extern int run;
 extern int jack_reconnect;
 extern pthread_cond_t jack_trigger_cond;
 extern int daemonize;
@@ -42,7 +43,9 @@ extern char *jack_gid;
 
 #define pprintf(level, ...) do { \
 	if (level <= verbosity) { \
-		if (!daemonize) \
+		if (daemonize) \
+			syslog(LOG_INFO, __VA_ARGS__); \
+		else \
 			printf(__VA_ARGS__); \
 	} \
 } while(0)
@@ -50,11 +53,11 @@ extern char *jack_gid;
 jack_client_t *client = NULL;
 
 void jack_shutdown (void *arg) {
-	pprintf (0, "jack-shutdown received, exiting ...\n");
+	pprintf (1, "jack-shutdown received.\n");
 	if (jack_reconnect) {
 		client=NULL;
 	} else {
-		terminate(0);
+		run=0;
 	}
 }
 
@@ -97,12 +100,13 @@ int jjack_open () {
 #endif
 
 	if (jack_activate (client)) {
-		pprintf (jack_reconnect?3:0, "cannot activate client");
+		pprintf (jack_reconnect?3:0, "cannot activate client\n");
 		client=NULL;
 		restore_privileges();
 		return (1);
 	}
 	restore_privileges();
+	pprintf (3, "connected to JACKd\n");
 	return (0);
 }
 
