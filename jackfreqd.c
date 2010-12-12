@@ -195,6 +195,16 @@ int set_speed(cpuinfo_t *cpu) {
 	pprintf(3,"Setting speed to %d\n", cpu->current_speed);
 
 	change_speed_count++;
+#if 0	
+	strncpy(writestr, cpu->sysfs_dir, 50);
+	strncat(writestr, SYSFS_SETSPEED, 20);
+	
+	if ((cpu->wfd = open(writestr, O_WRONLY)) < 0) {
+		err = errno;
+		perror("Can't open scaling_setspeed");
+		return err;
+	}
+#endif
 
 	lseek(cpu->wfd, 0, SEEK_CUR);
 	
@@ -213,7 +223,12 @@ int set_speed(cpuinfo_t *cpu) {
 		printf("Could not write scaling_setspeed\n");
 		return EPIPE;
 	}
+#if 0
+	close(cpu->wfd);
+	cpu->wfd=0;
+#else
 	fsync(cpu->wfd);
+#endif
 
 	return 0;
 }
@@ -504,11 +519,15 @@ int get_per_cpu_info(cpuinfo_t *cpu, int cpuid) {
 
 	strncpy(scratch, cpu->sysfs_dir, 50);
 	strncat(scratch, SYSFS_SETSPEED, 20);
+#if 0
+	cpu->wfd=0;
+#else
 	if ((cpu->wfd = open(scratch, O_WRONLY)) < 0) {
 		err = errno;
 		perror("Can't open scaling_setspeed");
 		return err;
 	}
+#endif
 	
 	return 0;
 }
