@@ -140,6 +140,7 @@ void help(void) {
 	printf("\n");
 	printf(" -u #      DSP usage upper limit percentage [0 .. 100, default 50]\n");
 	printf(" -l #      DSP usage lower limit percentage [0 .. 100, default 10]\n");
+	printf(" -w        wait for and re-connect to jackd.\n");
 	printf(" -j <uid>  user-name or UID of jackd process (default: autodetect)\n");
 	printf(" -J <gid>  group-name or GID of jackd process (default: autodetect)\n");
 	printf("\n");
@@ -604,6 +605,18 @@ void terminate(int signum) {
 	exit(0);
 }
 
+void get_jack_uid() {
+	int uid,gid;
+	if (get_jack_proc (&uid, &gid)) return;
+	if (jack_uid) free(jack_uid);
+	if (jack_gid) free(jack_gid);
+	jack_uid=calloc(16,sizeof(char));
+	jack_gid=calloc(16,sizeof(char));
+	sprintf(jack_uid,"%i", uid);
+	sprintf(jack_gid,"%i", gid);
+	pprintf(1, "jackd: uid:%i gid:%i\n", uid, gid);
+}
+
 /* set process user and group(s) id */
 void drop_privileges(char *setgid_group, char *setuid_user) {
   int uid=0, gid=0;
@@ -779,7 +792,7 @@ int main (int argc, char **argv) {
 	while(1) {
 		int c;
 
-		c = getopt(argc, argv, "dnvqPc:u:U:s:l:L:j:J:h");
+		c = getopt(argc, argv, "dnvqPwc:u:U:s:l:L:j:J:h");
 		if (c == -1)
 			break;
 
@@ -871,12 +884,21 @@ int main (int argc, char **argv) {
 				if (jack_gid) free(jack_gid);
 				jack_gid = strdup(optarg);
 				break;
+			case 'w':
+				jack_reconnect =1;
+				break;
 			case 'h':
 			default:
 				help();
 				return 0;
 		}
 	}
+
+	if (jack_reconnect && !use_cpu_load) {
+		printf("WARNING: jack-reconnect should be used with -P\n");
+		printf("with no jackd: CPU freq scaling will never be triggered.\n");
+	}
+
 
 	if (lowwater_cpu > highwater_cpu) {
 		printf("Invalid: lower pct higher than upper pct!\n");
@@ -978,21 +1000,15 @@ int main (int argc, char **argv) {
 	}
 
 	if (!jack_uid && !jack_gid) {
-		//try to detect user running 'jackd' or 'jackdbus'
-		int uid,gid;
-		if (!get_jack_proc (&uid, &gid)) {
-			jack_uid=calloc(16,sizeof(char));
-			jack_gid=calloc(16,sizeof(char));
-			sprintf(jack_uid,"%i", uid);
-			sprintf(jack_gid,"%i", gid);
-			pprintf(1, "jackd: uid:%i gid:%i\n", uid, gid);
-		}
+		get_jack_uid();
 	}
 
-	// drop priv to jack-user
-  drop_privileges(jack_gid, jack_uid);
+	if (!jack_uid && !jack_reconnect) {
+		pprintf(0, "No JACK-uid given or detected.\n");
+    terminate(0);
+	}
 
-  if (jjack_open()) {
+  if (jjack_open() && !jack_reconnect) {
 		pprintf(0, "Failed to connect to jackd\n");
     terminate(0);
 	}
@@ -1017,10 +1033,7 @@ int main (int argc, char **argv) {
 			pollts.tv_sec += 1;
 		}
 		pollts.tv_nsec = (pollts.tv_nsec + ((poll%1000)*1000000))%1000000000;
-
 		pthread_cond_timedwait(&jack_trigger_cond, &poll_wait_lock, &pollts);
-
-		//usleep(poll*1000); // use interruptable sleep
 
 		float jack_load = jjack_poll();
 		pprintf(4, "dsp load: %.3f\n", jack_load);

@@ -29,10 +29,19 @@
 
 /* prototypes */
 void terminate(int signum);
+void drop_privileges(char *setgid_group, char *setuid_user);
+void get_jack_uid();
+
+/* globals */
+int did_setuid = 0;
+
+/* extern globals */
 extern int jack_reconnect;
 extern pthread_cond_t jack_trigger_cond;
 extern int daemonize;
 extern int verbosity;
+extern char *jack_uid;
+extern char *jack_gid;
 
 #define pprintf(level, ...) do { \
 	if (level <= verbosity) { \
@@ -67,6 +76,14 @@ int jjack_open () {
 	jack_options_t options = JackNoStartServer;
 	jack_status_t status;
 
+	// drop priv to jack-user
+	if (!did_setuid) {
+		if (!jack_uid) get_jack_uid();
+		if (!jack_uid) return -1;
+		drop_privileges(jack_gid, jack_uid);
+		did_setuid=1;
+	}
+
 	client = jack_client_open ("jack_cpu_load", options, &status);
 	if (!client) {
 		pprintf (jack_reconnect?3:0, "jack_client_open() failed, "
@@ -77,7 +94,7 @@ int jjack_open () {
 		client=NULL;
 		return(1);
 	}
-  
+
 	jack_on_shutdown (client, jack_shutdown, 0);
 	jack_set_graph_order_callback(client, jack_trigger_graph, NULL);
 #if 0
@@ -104,7 +121,7 @@ float jjack_poll () {
 	if (!client) {
 		// TODO limit retries to 1 per 3 sec or so.
 		if (!jack_reconnect) return -1;
-	  if (!jjack_open()) return -1;
+		if (jjack_open()) return -1;
 	}
 	return(jack_cpu_load(client));
 }
