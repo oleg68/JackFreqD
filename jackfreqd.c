@@ -88,11 +88,13 @@ int daemonize = 0;
 int verbosity = 0;
 int ignore_nice = 1;
 int use_cpu_load = 0;
-unsigned int poll = 250; /* in msecs */
+unsigned int poll = 1000; /* in msecs */
 char *jack_uid = NULL;
 char *jack_gid = NULL;
-unsigned int highwater = 50;
-unsigned int lowwater = 10;
+unsigned int highwater_dsp = 50;
+unsigned int lowwater_dsp = 10;
+unsigned int highwater_cpu = 80;
+unsigned int lowwater_cpu = 20;
 unsigned int cores_specified = 0;
 unsigned int step_specified = 0;
 unsigned int step = 100000;  /* in kHz */
@@ -111,7 +113,7 @@ int get_jack_proc (int *pid, int *gid);
 #define SYSFS_TREE "/sys/devices/system/cpu/"
 #define SYSFS_SETSPEED "scaling_setspeed"
 
-#define VERSION	"0.0.0"
+#define VERSION	"0.0.1"
 
 void help(void) {
 
@@ -121,13 +123,18 @@ void help(void) {
 	printf(" -d        detach from terminal - daemonize\n");
 	printf(" -v        Increase output verbosity, can be used more than once.\n");
 	printf(" -q        Quiet mode, only emergency output.\n");
-	printf(" -P        Combine DSP and CPU load.\n");
-	printf(" -n        Include 'nice'd processes in calculations (only with -P)\n");
+	printf("\n");
+	printf(" -p #      Polling frequency in msecs (default = 1000)\n");
 	printf(" -s #      Frequency step in kHz (default = 100000)\n");
 	printf(" -c #      Specify number of threads per power-managed core\n");
+	printf("\n");
+	printf(" -P        Combine DSP and CPU load.\n");
+	printf(" -n        Include 'nice'd processes in calculations (only with -P)\n");
+	printf(" -U #      CPU usage upper limit percentage [0 .. 100, default 80]\n");
+	printf(" -L #      CPU usage lower limit percentage [0 .. 100, default 20]\n");
+	printf("\n");
 	printf(" -u #      DSP usage upper limit percentage [0 .. 100, default 50]\n");
 	printf(" -l #      DSP usage lower limit percentage [0 .. 100, default 10]\n");
-	printf(" -p #      Polling frequency in msecs (default = 250)\n");
 	printf(" -j <uid>  user-name or UID of jackd process (default: autodetect)\n");
 	printf(" -J <gid>  group-name or GID of jackd process (default: autodetect)\n");
 	printf("\n");
@@ -511,21 +518,21 @@ enum modes inline decide_speed(cpuinfo_t *cpu, float dspload) {
 		if ((pct = calc_stat(cpu)) < 0) {
 			return SAME; // error
 		}
-		if (((dspload > highwater) || (pct >= ((float)highwater/100.0))) 
+		if (((dspload > highwater_dsp) || (pct >= ((float)highwater_cpu/100.0))) 
 				&& (cpu->current_speed != cpu->max_speed)) {
 			return RAISE;
 		}
-		else if (((dspload < lowwater) && (pct <= ((float)lowwater/100.0))) 
+		else if (((dspload < lowwater_dsp) && (pct <= ((float)lowwater_cpu/100.0))) 
 		         && (cpu->current_speed != cpu->min_speed)) {
 			return LOWER;
 		}
 		return SAME;
 	}
 
-	if (dspload > highwater && (cpu->current_speed != cpu->max_speed)) {
+	if (dspload > highwater_dsp && (cpu->current_speed != cpu->max_speed)) {
 		return RAISE;
 	}
-	else if (dspload < lowwater && (cpu->current_speed != cpu->min_speed)) {
+	else if (dspload < lowwater_dsp && (cpu->current_speed != cpu->min_speed)) {
 		return LOWER;
 	}
 	return SAME;
@@ -766,7 +773,7 @@ int main (int argc, char **argv) {
 	while(1) {
 		int c;
 
-		c = getopt(argc, argv, "dnvqPc:u:s:l:j:J:h");
+		c = getopt(argc, argv, "dnvqPc:u:U:s:l:L:j:J:h");
 		if (c == -1)
 			break;
 
@@ -815,22 +822,40 @@ int main (int argc, char **argv) {
 				pprintf(2,"Polling every %d msecs\n", poll);
 				break;
 			case 'u':
-				highwater = strtol(optarg, NULL, 10);
-				if ((highwater < 0) || (highwater > 100)) {
+				highwater_dsp = strtol(optarg, NULL, 10);
+				if ((highwater_dsp < 0) || (highwater_dsp > 100)) {
 					printf("upper limit must be between 0 and 100\n");
 					help();
 					exit(ENOTSUP);
 				}
-				pprintf(2,"Using upper pct of %d%%\n",highwater);
+				pprintf(2,"Using upper pct of %d%%\n",highwater_dsp);
 				break;
 			case 'l':
-				lowwater = strtol(optarg, NULL, 10);
-				if ((lowwater < 0) || (lowwater > 100)) {
+				lowwater_dsp = strtol(optarg, NULL, 10);
+				if ((lowwater_dsp < 0) || (lowwater_dsp > 100)) {
 					printf("lower limit must be between 0 and 100\n");
 					help();
 					exit(ENOTSUP);
 				}
-				pprintf(2,"Using lower pct of %d%%\n",lowwater);
+				pprintf(2,"Using lower pct of %d%%\n",lowwater_dsp);
+				break;
+			case 'U':
+				highwater_cpu = strtol(optarg, NULL, 10);
+				if ((highwater_cpu < 0) || (highwater_cpu > 100)) {
+					printf("upper limit must be between 0 and 100\n");
+					help();
+					exit(ENOTSUP);
+				}
+				pprintf(2,"Using upper pct of %d%%\n",highwater_cpu);
+				break;
+			case 'L':
+				lowwater_cpu = strtol(optarg, NULL, 10);
+				if ((lowwater_cpu < 0) || (lowwater_cpu > 100)) {
+					printf("lower limit must be between 0 and 100\n");
+					help();
+					exit(ENOTSUP);
+				}
+				pprintf(2,"Using lower pct of %d%%\n",lowwater_cpu);
 				break;
 			case 'j':
 				if (jack_uid) free(jack_uid);
@@ -847,7 +872,13 @@ int main (int argc, char **argv) {
 		}
 	}
 
-	if (lowwater > highwater) {
+	if (lowwater_cpu > highwater_cpu) {
+		printf("Invalid: lower pct higher than upper pct!\n");
+		help();
+		exit(ENOTSUP);
+	}
+
+	if (lowwater_dsp > highwater_dsp) {
 		printf("Invalid: lower pct higher than upper pct!\n");
 		help();
 		exit(ENOTSUP);
