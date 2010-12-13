@@ -21,16 +21,32 @@ jackfreqd \- control CPU speed according to DSP load
 .B jackfreqd
 .RI [ options ] 
 .SH DESCRIPTION
-This simple client controls CPU speed and voltage using the sysfs interface
+jackfreqd is a variant of powernowd tailored for pro-audio work.
+
+This client controls CPU speed and voltage using the sysfs interface
 to the CPUFreq driver in v2.6 Linux kernels. It does not depend on APM or
 ACPI, and it doesn't try to do anything other than control the CPU via
 the userspace governor and sysfs.
 
-jackfreqd is a variant of powernowd tailored for pro-audio work.
+The CPU-frequency is scaled depending on DSP and (optionally) system-load. 
+As the name implies jackfreqd takes the DSP load from the JACK Audio 
+Connection Kit sound-daemon.
 
-The CPU-frequency is scaled depending on DSP and system-load. 
 On multi-threaded system the system-load may still be too low for a
-default governor to kick in while DSP load is already at the limit.
+CPU governor to react while DSP-load is already at the limit.
+
+In order to gain access to modify CPU-speed and do so quickly, 
+jackfreqd needs to be run as root.
+
+It can safely be launched during system startup: jackfreqd can discover 
+and (re-)connect to a JACK instance that is started by any user on the 
+system later on, or it can be made to stick to a instance for a
+given user-id which runs the JACK-daemon.
+
+jackfreqd changes frequency by a sawtooth function: The system immediately
+jumps to the highest frequency whenever max(DSP-load, CPU-load) exceeds a
+given threshold (upper limit \-u, \-U) . As soon as the load drops below the
+lower limit (\-l, \-L) the CPU speed is decreased by 'one step'.
 
 .SH OPTIONS
 .TP
@@ -66,7 +82,7 @@ Polling frequency in msecs (default = 1000)
 DSP usage upper limit percentage [0 .. 100, default 50]
 .TP
 .B \-l
-CPU usage lower limit percentage [0 .. 100, default 10]
+DSP usage lower limit percentage [0 .. 100, default 10]
 .TP
 .B \-U
 CPU usage upper limit percentage [0 .. 100, default 80]
@@ -85,6 +101,22 @@ user-name or UID of jackd process (default: autodetect)
 .B \-J
 group-name or GID of jackd process (default: autodetect)
 
+.SH EXAMPLE
+.nf
+.ft B
+ sudo jackfreqd \-P \-w \-v
+.ft R
+.fi
 .SH AUTHOR
-jackfreqd was created by Robin Gareus <robin@gareus.org>. 
-It is heavily based on the powernowd program by John Clemens <clemej@alum.rpi.edu>
+.PP
+jackfreqd was created by \fBRobin Gareus\fR <\&robin@gareus.org\&>.
+
+It is based on the powernowd program by \fBJohn Clemens\fR <\&clemej@alum.rpi.edu\&>
+
+.SH "COPYRIGHT"
+.br
+Copyright \(co 2010 Robin Gareus, GNU GPL version 2 or later. 
+.br
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+.br

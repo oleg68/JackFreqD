@@ -1,0 +1,16 @@
+2010-12-12  rgareus  <robin@gareus.org>
+  * added JACK process and UID detection based on procps
+	* change UID to access JACK
+	* hook into jack-graph change for triggering freq updates
+	* algorithm to choose CPU freq according to DSP and CPU load
+	* added man page & debian packagaing
+  * v0.1.0
+
+2010-12-12  rgareus  <robin@gareus.org>
+  * first working version
+	* JACK DSP load polling
+  * v0.0.1
+
+2010-12-12  rgareus  <robin@gareus.org>
+  * branch of powernowd-1.00
+  * v0.0.0
