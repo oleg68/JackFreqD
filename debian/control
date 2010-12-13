@@ -9,15 +9,19 @@ Homepage: http://rg42.org/oss/jackfreqd/
 Package: jackfreqd
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Enhances: jackd2 | jackd2-firewire
 Conflicts: cpudyn, cpufreqd, powernowd
 Description: control CPU speed according to JACK DSP load
+ jackfreqd is a variant of powernowd tailored for pro-audio work.
+ .
  This simple client controls CPU speed and voltage using the sysfs interface
  to the CPUFreq driver in v2.6 Linux kernels. It does not depend on APM or
  ACPI, and it doesn't try to do anything other than control the CPU via
  the userspace governor and sysfs.
  .
- jackfreqd is a variant of powernowd tailored for pro-audio work.
- .
- The CPU-frequency is scaled depending on DSP and system-load. 
  On multi-threaded system the system-load may still be too low for a
- default governor to kick in while DSP load is already at the limit.
+ CPU governor to react while DSP-load is already at the limit.
+ .
+ The CPU-frequency is scaled depending on DSP and (optionally) system-load. 
+ As the name implies jackfreqd takes the DSP load from the JACK Audio 
+ Connection Kit sound-daemon.
