@@ -1,0 +1,4 @@
+jackfreqd is written and maintained by Robin Gareus <robin@gareus.org>
+
+It is heavily based on powernowd by John Clemens 
+and uses code from the sysvinit suite by Miquel van Smoorenburg.
