@@ -9,7 +9,7 @@ Homepage: http://rg42.org/oss/jackfreqd/
 Package: jackfreqd
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Enhances: jackd2 | jackd2-firewire
+Enhances: jackd1| jackd1-firewire, jackd2 | jackd2-firewire
 Conflicts: cpudyn, cpufreqd, powernowd
 Description: control CPU speed according to JACK DSP load
  jackfreqd is a variant of powernowd tailored for pro-audio work.
