@@ -81,6 +81,8 @@ int jjack_open () {
 	if (!jack_uid) return -1;
 	drop_privileges(jack_gid, jack_uid);
 
+	pprintf(0, "DEBUG: uid:%i gid:%i\n", getuid(),getgid());
+
 	client = jack_client_open ("jack_cpu_load", options, &status);
 	if (!client) {
 		pprintf (jack_reconnect?3:0, "jack_client_open() failed, "
