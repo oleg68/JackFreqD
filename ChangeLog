@@ -1,3 +1,7 @@
+2010-12-14  rgareus  <robin@gareus.org>
+  * fix for Gabriel 'Voodoo' problem
+  * v0.1.1
+
 2010-12-12  rgareus  <robin@gareus.org>
   * added JACK process and UID detection based on procps
 	* change UID to access JACK
