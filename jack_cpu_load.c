@@ -81,7 +81,7 @@ int jjack_open () {
 	if (!jack_uid) return -1;
 	drop_privileges(jack_gid, jack_uid);
 
-	pprintf(0, "DEBUG: uid:%i euid=%i gid:%i egid:%i\n", getuid(),geteuid(), getgid(), getegid());
+	pprintf(4, "DEBUG: uid:%i euid=%i gid:%i egid:%i\n", getuid(),geteuid(), getgid(), getegid());
 
 	client = jack_client_open ("jack_cpu_load", options, &status);
 	if (!client) {
