@@ -121,7 +121,7 @@ int get_jack_proc (int *pid, int *gid);
 #define SYSFS_TREE "/sys/devices/system/cpu/"
 #define SYSFS_SETSPEED "scaling_setspeed"
 
-#define VERSION	"0.1.0"
+#define VERSION	"0.1.1"
 
 void help(void) {
 
@@ -661,7 +661,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 
 	/* Set uid and gid */
 	if(gid) {
-#if 1
+#if 0
 		if(setfsgid(gid)) {
 			pprintf(0, "setfsgid failed.\n");
 			terminate(0);
@@ -673,7 +673,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 		}
 	}
 	if(uid) {
-#if 1
+#if 0
 		if(setfsuid(uid)) {
 			pprintf(0, "setfsuid failed.\n");
 			terminate(0);
@@ -689,7 +689,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 void restore_privileges() {
 	setresuid((uid_t)-1, (uid_t)0, (uid_t)0);
 	setresgid((uid_t)-1, (uid_t)0, (uid_t)0);
-#if 1
+#if 0
 	setfsgid((uid_t)0);
 	setfsuid((uid_t)0);
 #endif
