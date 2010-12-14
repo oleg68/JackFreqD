@@ -30,8 +30,8 @@ clean:
 procps: procps.c
 	gcc -o procps procps.c -DMAIN
 
-jacktest: jacktest.c
-	gcc -o jacktest jacktest.c -ljack -Wall
+busyjack: tools/busyjack.c
+	gcc -o busyjack tools/busyjack.c -ljack -Wall
 
-jackxrun: jackxrun.c
-	gcc -o jackxrun jackxrun.c -ljack -Wall
+jackxrun: tools/jackxrun.c
+	gcc -o jackxrun tools/jackxrun.c -ljack -Wall
