@@ -661,7 +661,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 
 	/* Set uid and gid */
 	if(gid) {
-#if 0
+#if 1
 		if(setfsgid(gid)) {
 			pprintf(0, "setfsgid failed.\n");
 			terminate(0);
@@ -673,7 +673,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 		}
 	}
 	if(uid) {
-#if 0
+#if 1
 		if(setfsuid(uid)) {
 			pprintf(0, "setfsuid failed.\n");
 			terminate(0);
@@ -689,7 +689,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 void restore_privileges() {
 	setresuid((uid_t)-1, (uid_t)0, (uid_t)0);
 	setresgid((uid_t)-1, (uid_t)0, (uid_t)0);
-#if 0
+#if 1
 	setfsgid((uid_t)0);
 	setfsuid((uid_t)0);
 #endif
