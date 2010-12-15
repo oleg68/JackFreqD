@@ -1,3 +1,8 @@
+2010-12-15  rgareus  <robin@gareus.org>
+  * possible fix for jack-thread as root problem
+  * don't write log messsages while not root.
+  * v0.1.2
+
 2010-12-14  rgareus  <robin@gareus.org>
   * fix for Gabriel 'Voodoo' problem
   * v0.1.1
