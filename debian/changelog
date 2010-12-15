@@ -1,3 +1,9 @@
+jackfreqd (0.1.2-1) unstable; urgency=low
+
+  * new upstream release
+
+ -- Robin Gareus <robin@gareus.org>  Wed, 15 Dec 2010 13:20:14 +0100
+
 jackfreqd (0.1.1-1) unstable; urgency=low
 
   * new upstream release
