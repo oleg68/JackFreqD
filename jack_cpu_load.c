@@ -24,6 +24,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <sched.h>
 #include <pthread.h>
 #include <jack/jack.h>
 
@@ -79,19 +80,20 @@ int jjack_open () {
 	// drop priv to jack-user
 	if (!jack_uid) get_jack_uid();
 	if (!jack_uid) return -1;
-	drop_privileges(jack_gid, jack_uid);
 
 	pprintf(4, "DEBUG: uid:%i euid=%i gid:%i egid:%i\n", getuid(),geteuid(), getgid(), getegid());
 
+	drop_privileges(jack_gid, jack_uid);
+
 	client = jack_client_open ("jack_cpu_load", options, &status);
 	if (!client) {
+		restore_privileges();
 		pprintf (jack_reconnect?3:0, "jack_client_open() failed, "
 		    "status = 0x%2.0x\n", status);
 		if (status & JackServerFailed) {
 				pprintf (jack_reconnect?3:0, "Unable to connect to JACK server\n");
 		}
 		client=NULL;
-		restore_privileges();
 		return(1);
 	}
 
@@ -102,11 +104,21 @@ int jjack_open () {
 #endif
 
 	if (jack_activate (client)) {
+		restore_privileges();
 		pprintf (jack_reconnect?3:0, "cannot activate client\n");
 		client=NULL;
-		restore_privileges();
 		return (1);
 	}
+
+  /* workaround - let jack finish initialization
+	 * before returning to root UID
+	 */
+	pthread_yield();
+	sched_yield();
+	usleep(64000); /* guess: one jack period should be enough 1024*3/48k */
+	sched_yield();
+	pthread_yield();
+
 	restore_privileges();
 	pprintf (3, "connected to JACKd\n");
 	return (0);

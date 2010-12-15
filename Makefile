@@ -21,7 +21,7 @@ purge: uninstall
 	/bin/rm -f $(DESTDIR)/etc/init.d/jackfreqd
 
 clean:
-	/bin/rm -f jackfreqd procps jacktest jackxrun
+	/bin/rm -f jackfreqd procps busyjack jackxrun
 
 .PHONY: install uninstall purge clean
 
