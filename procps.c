@@ -239,7 +239,7 @@ int readproc() {
 
 int get_jack_proc (int *pid, int *gid) {
 	PROC		*p;
-  readproc();
+	readproc();
 	for (p = plist; p; p = p->next) {
 		if (p->argv0 && strstr(p->argv0, "jackd") != 0) {
 			//printf("pid:%i '%s' u:%i g:%i\n",p->pid, p->argv0, p->uid, p->gid);
@@ -255,7 +255,7 @@ int get_jack_proc (int *pid, int *gid) {
 int main (int argc, char **argv) {
 	char *prog = "jackd";
 	PROC		*p;
-  readproc();
+	readproc();
 
 	for (p = plist; p; p = p->next) {
 		if (p->argv0 && strstr(p->argv0, prog) != 0) {
