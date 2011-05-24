@@ -182,7 +182,8 @@ int read_file(const char *file, int fd, int new) {
 
 int set_speed(cpuinfo_t *cpu) {
 	cpuinfo_t *save;
-	int len, err, i;
+	int err=0;
+	int len, i;
 	char writestr[100];
 	/* 
 	 * We need to set the current speed on all virtual CPUs that fall
@@ -204,7 +205,7 @@ int set_speed(cpuinfo_t *cpu) {
 	
 	if ((cpu->wfd = open(writestr, O_WRONLY)) < 0) {
 		err = errno;
-		perror("Can't open scaling_setspeed");
+		perror("Can't open scaling_setspeed /sys/ device.");
 		return err;
 	}
 
@@ -217,19 +218,18 @@ int set_speed(cpuinfo_t *cpu) {
 	
 	if ((len = write(cpu->wfd, writestr, strlen(writestr))) < 0) {
 		err = errno;
-		perror("Couldn't write to scaling_setspeed\n");
-		return err;
+		perror("Could not write to scaling_setspeed sys-fs\n");
 	}
 
 	if (len != strlen(writestr)) {
-		printf("Could not write scaling_setspeed\n");
-		return EPIPE;
+		pprintf(0, "ERROR Incomplete write to scaling_setspeed.\n");
+		err=EPIPE;
 	}
 
 	close(cpu->wfd);
 	cpu->wfd=0;
 
-	return 0;
+	return err;
 }
 
 /*
@@ -315,7 +315,7 @@ int change_speed(cpuinfo_t *cpu, enum modes mode) {
 		if (cpu->speed_index != (cpu->table_size-1))
 			cpu->speed_index++;
 	}
-	pprintf(4,"mode=%d", mode);
+	pprintf(4,"change_speed: mode=%d\n", mode);
 	return set_speed(cpu);
 }
 
@@ -926,8 +926,8 @@ int main (int argc, char **argv) {
 	}
 
 	if (jack_reconnect && !use_cpu_load) {
-		printf("WARNING: jack-reconnect should be used with -P\n");
-		printf("with no jackd: CPU freq scaling will never be triggered.\n");
+		printf("WARNING: jack-reconnect ('-w') should be used with '-P' because otherwise\n");
+		printf("freq-scaling will never be triggered when jackd is not running.\n");
 	}
 
 
