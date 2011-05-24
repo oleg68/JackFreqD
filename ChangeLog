@@ -1,3 +1,9 @@
+2011-05-24  rgareus  <robin@gareus.org>
+  * changed init script to /bin/bash
+  * improved debug and warning message syntax.
+  * link with -lm
+  * v0.1.3
+
 2010-12-15  rgareus  <robin@gareus.org>
   * possible fix for jack-thread as root problem
   * don't write log messsages while not root.
@@ -9,15 +15,15 @@
 
 2010-12-12  rgareus  <robin@gareus.org>
   * added JACK process and UID detection based on procps
-	* change UID to access JACK
-	* hook into jack-graph change for triggering freq updates
-	* algorithm to choose CPU freq according to DSP and CPU load
-	* added man page & debian packagaing
+  * change UID to access JACK
+  * hook into jack-graph change for triggering freq updates
+  * algorithm to choose CPU freq according to DSP and CPU load
+  * added man page & debian packagaing
   * v0.1.0
 
 2010-12-12  rgareus  <robin@gareus.org>
   * first working version
-	* JACK DSP load polling
+  * JACK DSP load polling
   * v0.0.1
 
 2010-12-12  rgareus  <robin@gareus.org>
