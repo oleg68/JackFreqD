@@ -1,5 +1,5 @@
 CFLAGS+=-Wall -g `pkg-config --cflags jack`
-LDFLAGS+=`pkg-config --libs jack` -lpthread -lm -Wl,--as-needed
+LDFLAGS+=`pkg-config --libs jack` -lpthread -lrt -lm -Wl,--as-needed
 
 all: jackfreqd
 
