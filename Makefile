@@ -1,3 +1,4 @@
+PREFIX=/usr/local
 CFLAGS+=-Wall -g `pkg-config --cflags jack`
 LDFLAGS+=`pkg-config --libs jack` -lpthread -lrt -lm -Wl,--as-needed
 
@@ -6,16 +7,16 @@ all: jackfreqd
 jackfreqd: jackfreqd.c jack_cpu_load.c procps.c
 
 install: jackfreqd
-	install -o root -g root -m 755 -d $(DESTDIR)/usr/sbin
-	install -o root -g root -m 755 -s jackfreqd $(DESTDIR)/usr/sbin
+	install -o root -g root -m 755 -d $(DESTDIR)$(PREFIX)/sbin
+	install -o root -g root -m 755 -s jackfreqd $(DESTDIR)$(PREFIX)/sbin
 	install -o root -g root -m 755 -d $(DESTDIR)/etc/init.d
 	install -o root -g root -m 755 jackfreqd.init $(DESTDIR)/etc/init.d/jackfreqd
-	install -o root -g root -m 755 -d $(DESTDIR)/usr/share/man/man1
-	install -o root -g root -m 644 jackfreqd.1 $(DESTDIR)/usr/share/man/man1/jackfreqd.1
+	install -o root -g root -m 755 -d $(DESTDIR)$(PREFIX)/share/man/man1
+	install -o root -g root -m 644 jackfreqd.1 $(DESTDIR)$(PREFIX)/share/man/man1/jackfreqd.1
 
 uninstall:
-	/bin/rm -f $(DESTDIR)/usr/sbin/jackfreqd
-	/bin/rm -f $(DESTDIR)/usr/share/man/man1/jackfreqd.1
+	/bin/rm -f $(DESTDIR)$(PREFIX)/sbin/jackfreqd
+	/bin/rm -f $(DESTDIR)$(PREFIX)/share/man/man1/jackfreqd.1
 
 purge: uninstall
 	/bin/rm -f $(DESTDIR)/etc/init.d/jackfreqd
