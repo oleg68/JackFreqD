@@ -1,0 +1,4 @@
+*.swp
+/jackfreqd
+/debian/jackfreqd*
+/debian/files
