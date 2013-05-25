@@ -1,6 +1,8 @@
-PREFIX=/usr/local
-CFLAGS+=-Wall -g `pkg-config --cflags jack`
-LDFLAGS+=`pkg-config --libs jack` -lpthread -lrt -lm -Wl,--as-needed
+PREFIX?=/usr/
+LDFLAGS?=-Wl,--as-needed
+
+override CFLAGS+=-Wall -g `pkg-config --cflags jack`
+LOADLIBES=`pkg-config --libs jack` -lpthread -lrt -lm -Wl,--as-needed
 
 all: jackfreqd
 
