@@ -71,9 +71,11 @@ typedef struct cpuinfo {
 	unsigned int speed_index;
 	cpustats_t *last_reading;
 	cpustats_t *reading;
+	enum modes current_pstate_mode;
 	int fd;
 	int wfd;
 	char *sysfs_dir;
+	int is_pstate;
 	int in_mhz; /* 0 = speed in kHz, 1 = speed in mHz */
 	unsigned long *freq_table;
 	int table_size;
@@ -120,6 +122,9 @@ int get_jack_proc (int *pid, int *gid);
 
 #define SYSFS_TREE "/sys/devices/system/cpu/"
 #define SYSFS_SETSPEED "scaling_setspeed"
+#define SYSFS_PSTATE_MODE "scaling_governor"
+#define PSTATE_MODE_POWERSAVE "powersave"
+#define PSTATE_MODE_PERFORMANCE "performance"
 
 #define VERSION	"0.1.3"
 
@@ -232,6 +237,54 @@ int set_speed(cpuinfo_t *cpu) {
 	return err;
 }
 
+int set_pstate_mode(cpuinfo_t *cpu, enum modes mode) {
+  int err=0;
+  int len;
+  const char* new_pstate_mode = NULL;
+  char writestr[100];
+
+  switch (mode) {
+    case LOWER:
+      new_pstate_mode = PSTATE_MODE_POWERSAVE;
+      break;
+    case RAISE:
+      new_pstate_mode = PSTATE_MODE_PERFORMANCE;
+      break;
+  }
+  if (new_pstate_mode) {
+    pprintf(3,"Setting mode to %s\n", new_pstate_mode);
+
+    cpu->current_pstate_mode = mode;
+
+    change_speed_count++;
+
+    strncpy(writestr, cpu->sysfs_dir, 50);
+    strncat(writestr, SYSFS_PSTATE_MODE, 20);
+
+    if ((cpu->wfd = open(writestr, O_WRONLY)) < 0) {
+	    err = errno;
+	    perror("Can't open " SYSFS_PSTATE_MODE " /sys/ device.");
+	    return err;
+    }
+
+    lseek(cpu->wfd, 0, SEEK_CUR);
+
+    if ((len = write(cpu->wfd, new_pstate_mode, strlen(new_pstate_mode))) < 0) {
+	    err = errno;
+	    perror("Could not write to " SYSFS_PSTATE_MODE " sys-fs\n");
+    }
+
+    if (len != strlen(new_pstate_mode)) {
+	    pprintf(0, "ERROR Incomplete write to " SYSFS_PSTATE_MODE ".\n");
+	    err=EPIPE;
+    }
+
+    close(cpu->wfd);
+    cpu->wfd=0;
+  }
+  return err;
+}
+
 /*
  * Reads /proc/stat into buf, and parses the output.
  *
@@ -309,14 +362,23 @@ int change_speed(cpuinfo_t *cpu, enum modes mode) {
 	if (cpu->cpuid != cpu->scalable_unit) 
 		return 0;
 	
-	if (mode == RAISE) {
-		cpu->speed_index = 0;
-	} else {
-		if (cpu->speed_index != (cpu->table_size-1))
-			cpu->speed_index++;
-	}
 	pprintf(4,"change_speed: mode=%d\n", mode);
-	return set_speed(cpu);
+
+	int res;
+	
+	if (cpu->is_pstate) {
+	  res = set_pstate_mode(cpu, mode);
+	} else {
+	  if (mode == RAISE) {
+		  cpu->speed_index = 0;
+	  } else {
+		  if (cpu->speed_index != (cpu->table_size-1))
+			  cpu->speed_index++;
+	  }
+	  res = set_speed(cpu);
+	}
+	
+	return res;
 }
 
 /* 
@@ -446,36 +508,49 @@ int get_per_cpu_info(cpuinfo_t *cpu, int cpuid) {
 	qsort(cpu->freq_table, cpu->table_size, sizeof(unsigned long), 
 			&faked_compare);
 	
+	cpu->is_pstate = 0;
 	strncpy(scratch, cpu->sysfs_dir, 50);
-	strncat(scratch, "scaling_governor", 20);
+	strncat(scratch, "scaling_driver", 20);
 
-	if ((err = read_file(scratch, 0, 1)) != 0) {
-		perror("couldn't open scaling_governors file");
-		return err;
+	if ((err = read_file(scratch, 0, 1)) == 0) {
+	  if (strncmp(buf, "intel_pstate", 12) == 0) {
+	    cpu->is_pstate = 1;
+	    cpu->current_pstate_mode = SAME;
+	  }
 	}
 
-	if (strncmp(buf, "userspace", 9) != 0) {
-		if ((fd = open(scratch, O_RDWR)) < 0) {
-			err = errno;
-			perror("couldn't open govn's file for writing");
+	if (! cpu->is_pstate) {
+		strncpy(scratch, cpu->sysfs_dir, 50);
+		strncat(scratch, "scaling_governor", 20);
+
+		if ((err = read_file(scratch, 0, 1)) != 0) {
+			perror("couldn't open scaling_governors file");
 			return err;
 		}
-		strncpy(tmp, "userspace\n", 11);
-		if (write(fd, tmp, 11*sizeof(char)) < 0) {
-			err = errno;
-			perror("Error writing file governor");
-			close(fd);
-			return err;
-		}
-		if ((err = read_file(scratch, fd, 0)) != 0) {
-			perror("Error reading back governor file");
-			close(fd);
-			return err;
-		}
-		close(fd);
+
 		if (strncmp(buf, "userspace", 9) != 0) {
-			perror("Can't set to userspace governor, exiting");
-			return EPIPE;
+			if ((fd = open(scratch, O_RDWR)) < 0) {
+				err = errno;
+				perror("couldn't open govn's file for writing");
+				return err;
+			}
+			strncpy(tmp, "userspace\n", 11);
+			if (write(fd, tmp, 11*sizeof(char)) < 0) {
+				err = errno;
+				perror("Error writing file governor");
+				close(fd);
+				return err;
+			}
+			if ((err = read_file(scratch, fd, 0)) != 0) {
+				perror("Error reading back governor file");
+				close(fd);
+				return err;
+			}
+			close(fd);
+			if (strncmp(buf, "userspace", 9) != 0) {
+				perror("Can't set to userspace governor, exiting");
+				return EPIPE;
+			}
 		}
 	}
 	
@@ -523,7 +598,9 @@ int get_per_cpu_info(cpuinfo_t *cpu, int cpuid) {
 /*
  * The heart of the program... decide to raise or lower the speed.
  */
-enum modes inline decide_speed(cpuinfo_t *cpu, float dspload) {
+enum modes decide_speed(cpuinfo_t *cpu, float dspload) {
+	pprintf(4, "decide_speed: dspload=%f, lowwater_dsp=%d, highwater_dsp=%d, cpu->current_pstate_mode=%d\n", dspload, lowwater_dsp, highwater_dsp, cpu->current_pstate_mode);
+
 	if (use_cpu_load) {
 		float pct;
 		if ((pct = calc_stat(cpu)) < 0) {
@@ -540,10 +617,10 @@ enum modes inline decide_speed(cpuinfo_t *cpu, float dspload) {
 		return SAME;
 	}
 
-	if (dspload > highwater_dsp && (cpu->current_speed != cpu->max_speed)) {
+	if (dspload > highwater_dsp && (cpu->is_pstate ? cpu->current_pstate_mode < RAISE : cpu->current_speed != cpu->max_speed)) {
 		return RAISE;
 	}
-	else if (dspload < lowwater_dsp && (cpu->current_speed != cpu->min_speed)) {
+	else if (dspload < lowwater_dsp && (cpu->is_pstate ? cpu->current_pstate_mode > LOWER : cpu->current_speed != cpu->min_speed)) {
 		return LOWER;
 	}
 	return SAME;
@@ -579,8 +656,12 @@ void terminate(int signum) {
 	 * mix these two, now I can't remember why.  
 	 */
 	for(i = 0; i < ncpus; i++) {
-		cpu = all_cpus[i];
-		change_speed(cpu, RAISE);
+	  cpu = all_cpus[i];
+	  if (cpu->is_pstate) {
+	    change_speed(cpu, LOWER);
+	  } else {
+	    change_speed(cpu, RAISE);
+	  }
 	}
 
 	pprintf(4,"exiting: cleaning up 1/2.\n");
