@@ -1,7 +1,9 @@
-PREFIX?=/usr
+PREFIX?=$(DESTDIR)/usr
 LDFLAGS?=-Wl,--as-needed
+SYSCONFDIR=$(DESTDIR)/etc
+SYSTEMD_UNIT_DIR?=$(SYSCONFDIR)/systemd/system
 SYSTEMCTL:=$(shell which systemctl)
-SYSCONFDIR=/etc
+
 	
 override CFLAGS+=-Wall -g `pkg-config --cflags jack`
 LOADLIBES=`pkg-config --libs jack` -lpthread -lrt -lm -Wl,--as-needed
@@ -11,25 +13,26 @@ all: jackfreqd
 jackfreqd: jackfreqd.c jack_cpu_load.c procps.c
 
 install: jackfreqd
-	install -o root -g root -m 755 -d $(DESTDIR)$(PREFIX)/sbin
-	install -o root -g root -m 755 -s jackfreqd $(DESTDIR)$(PREFIX)/sbin
+	install -m 755 -d $(PREFIX)/sbin
+	install -m 755 -s jackfreqd $(PREFIX)/sbin
 
-	@if test -x "$(SYSTEMCTL)" && test -d "$(DESTDIR)$(SYSCONFDIR)/systemd/system"; then\
-	  install -o root -g root -m 644 jackfreq.service $(DESTDIR)$(SYSCONFDIR)/systemd/system/jackfreq.service;\
-	  $(SYSTEMCTL) daemon-reload;\
+	@if test -x "$(SYSTEMCTL)" && test -d "/etc/systemd/system"; then\
+	  install -m 755 -d $(SYSTEMD_UNIT_DIR);\
+	  install -m 644 jackfreq.service $(SYSTEMD_UNIT_DIR)/jackfreq.service;\
 	else\
-	  install -o root -g root -m 755 -d $(DESTDIR)$(SYSCONFDIR)/init.d;\
-	  install -o root -g root -m 755 jackfreqd.init $(DESTDIR)$(SYSCONFDIR)/init.d/jackfreqd;\
+	  install -m 755 -d $(SYSCONFDIR)/init.d;\
+	  install -m 755 jackfreqd.init $(SYSCONFDIR)/init.d/jackfreqd;\
 	fi
-	install -o root -g root -m 755 -d $(DESTDIR)$(PREFIX)/share/man/man1
-	install -o root -g root -m 644 jackfreqd.1 $(DESTDIR)$(PREFIX)/share/man/man1/jackfreqd.1
+	install -m 755 -d $(PREFIX)/share/man/man1
+	install -m 644 jackfreqd.1 $(PREFIX)/share/man/man1/jackfreqd.1
 
 uninstall:
-	/bin/rm -f $(DESTDIR)$(PREFIX)/sbin/jackfreqd
-	/bin/rm -f $(DESTDIR)$(PREFIX)/share/man/man1/jackfreqd.1
+	/bin/rm -f $(PREFIX)/sbin/jackfreqd
+	/bin/rm -f $(PREFIX)/share/man/man1/jackfreqd.1
 
 purge: uninstall
 	/bin/rm -f $(DESTDIR)/etc/init.d/jackfreqd
+	/bin/rm -f $(SYSTEMD_UNIT_DIR)/jackfreq.service
 
 clean:
 	/bin/rm -f jackfreqd procps busyjack jackxrun
