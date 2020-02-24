@@ -1,3 +1,8 @@
+2020-02-24 osamarin <osamarin68@gmail.com>
+  * added support of the intel_pstate governor driver
+  * added a systemd service
+  * v0.2.0
+
 2011-05-24  rgareus  <robin@gareus.org>
   * changed init script to /bin/bash
   * improved debug and warning message syntax.
