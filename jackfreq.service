@@ -1,0 +1,8 @@
+[Unit]
+Description=A daemon that switches the CPU frequency based on the jack DSP load
+
+[Service]
+ExecStart=/usr/sbin/jackfreqd -w -vvv
+
+[Install]
+WantedBy=multi-user.target
