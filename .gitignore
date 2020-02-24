@@ -2,3 +2,6 @@
 /jackfreqd
 /debian/jackfreqd*
 /debian/files
+/nbproject/private/
+/jackfreqd
+
