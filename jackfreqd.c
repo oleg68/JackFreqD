@@ -38,7 +38,7 @@
 #include <sys/fsuid.h>
 
 #define pprintf(level, ...) do { \
-	if (level <= verbosity) { \
+	if ((level) <= verbosity) { \
 		if (daemonize) \
 			syslog(LOG_INFO, __VA_ARGS__); \
 		else \
@@ -250,6 +250,7 @@ int set_pstate_mode(cpuinfo_t *cpu, enum modes mode) {
     case RAISE:
       new_pstate_mode = PSTATE_MODE_PERFORMANCE;
       break;
+    default:
   }
   if (new_pstate_mode) {
     pprintf(3,"Setting mode to %s\n", new_pstate_mode);
@@ -1106,7 +1107,7 @@ int main (int argc, char **argv) {
 				cpu->max_speed / 1000, 
 				cpu->table_size);
 		for(j=0;j<cpu->table_size; j++) {
-			pprintf(1, "     step%d : %ldMhz\n", j+1, 
+			pprintf(3, "     step%d : %ldMhz\n", j+1, 
 					cpu->freq_table[j] / 1000);
 		}
 	}
@@ -1170,6 +1171,8 @@ int main (int argc, char **argv) {
 #else 
 					pprintf(2, "changing CPU speed failed.\n");
 #endif
+				} else {
+					pprintf(2, "changed CPU speed %s\n", change < SAME ? "LOWER" : "UP");
 				}
 			}
 		}

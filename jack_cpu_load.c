@@ -44,7 +44,7 @@ extern char *jack_uid;
 extern char *jack_gid;
 
 #define pprintf(level, ...) do { \
-	if (level <= verbosity) { \
+	if ((level) <= verbosity) { \
 		if (daemonize) \
 			syslog(LOG_INFO, __VA_ARGS__); \
 		else \
@@ -86,6 +86,7 @@ int jjack_open () {
 
 	drop_privileges(jack_gid, jack_uid);
 
+	pprintf(4, "DEBUG: Connecting to a jack server\n");
 	client = jack_client_open ("jack_cpu_load", options, &status);
 	if (!client) {
 		restore_privileges();
@@ -97,6 +98,7 @@ int jjack_open () {
 		client=NULL;
 		return(1);
 	}
+	pprintf(1, "Connected to the jack server\n");
 
 	jack_on_shutdown (client, jack_shutdown, 0);
 	jack_set_graph_order_callback(client, jack_trigger_graph, NULL);
@@ -129,6 +131,7 @@ void jjack_close () {
 	if (client) {
 		jack_deactivate (client);
 		jack_client_close (client);
+		pprintf(1, "Disconnected from the jack server\n");
 	}
 	client=NULL;
 }

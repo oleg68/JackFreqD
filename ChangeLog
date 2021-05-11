@@ -1,3 +1,7 @@
+2021-05-11 osamarin <osamarin68@gmail.com>
+
+  * enchanced logging
+
 2020-02-24 osamarin <osamarin68@gmail.com>
   * added support of the intel_pstate governor driver
   * added a systemd service

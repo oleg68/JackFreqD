@@ -27,7 +27,7 @@
         <rebuildPropChanged>false</rebuildPropChanged>
       </toolsSet>
       <flagsDictionary>
-        <element flagsID="0" commonFlags="-mtune=generic -march=x86-64 -g"/>
+        <element flagsID="0" commonFlags="-g"/>
       </flagsDictionary>
       <codeAssistance>
       </codeAssistance>
@@ -37,6 +37,11 @@
           <buildCommand>${MAKE} -f Makefile</buildCommand>
           <cleanCommand>${MAKE} -f Makefile clean</cleanCommand>
           <executablePath></executablePath>
+          <cTool>
+            <preprocessorList>
+              <Elem>_REENTRANT</Elem>
+            </preprocessorList>
+          </cTool>
         </makeTool>
         <preBuild>
           <preBuildCommandWorkingDir>.</preBuildCommandWorkingDir>
@@ -45,24 +50,14 @@
       </makefileType>
       <item path="jack_cpu_load.c" ex="false" tool="0" flavor2="3">
         <cTool flags="0">
-          <incDir>
-            <pElem>/usr/include/jack</pElem>
-            <pElem>../../jackfreqd</pElem>
-          </incDir>
         </cTool>
       </item>
       <item path="jackfreqd.c" ex="false" tool="0" flavor2="3">
         <cTool flags="0">
-          <incDir>
-            <pElem>../../jackfreqd</pElem>
-          </incDir>
         </cTool>
       </item>
       <item path="procps.c" ex="false" tool="0" flavor2="3">
         <cTool flags="0">
-          <incDir>
-            <pElem>../../jackfreqd</pElem>
-          </incDir>
         </cTool>
       </item>
     </conf>
