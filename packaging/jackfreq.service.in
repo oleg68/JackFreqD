@@ -1,0 +1,10 @@
+[Unit]
+Description=@PROJECT_DESCRIPTION@
+
+[Service]
+Environment=OPTIONS="-w -vv"
+EnvironmentFile=-/etc/default/jackfreqd
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/jackfreqd $OPTIONS
+
+[Install]
+WantedBy=multi-user.target

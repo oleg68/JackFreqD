@@ -251,6 +251,7 @@ int set_pstate_mode(cpuinfo_t *cpu, enum modes mode) {
       new_pstate_mode = PSTATE_MODE_PERFORMANCE;
       break;
     default:
+      break;
   }
   if (new_pstate_mode) {
     pprintf(3,"Setting mode to %s\n", new_pstate_mode);
