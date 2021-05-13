@@ -1,6 +1,6 @@
 # 0.2.1 (2021-05-11)
 - shell scrips for build
-- build with cmake
+- build with cmake https://github.com/oleg68/jackfreqd/issues/3
 - removed unsupported files
 - enhanced logging
 
