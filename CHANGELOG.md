@@ -1,5 +1,7 @@
 # 0.2.1 (2021-05-11)
+- build on github
 - shell scrips for build
+- build rpm and deb
 - build with cmake https://github.com/oleg68/jackfreqd/issues/3
 - removed unsupported files
 - enhanced logging
