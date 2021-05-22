@@ -1,3 +1,4 @@
+- Added autorestart on crash https://github.com/oleg68/JackFreqD/issues/1
 - Fixed finding and connecting to pipewire daemons https://github.com/oleg68/JackFreqD/issues/2
 - Eliminatted spamming of steps in the log
 # 0.2.1 (2021-05-15)

@@ -5,6 +5,8 @@ Description=@PROJECT_DESCRIPTION@
 Environment=OPTIONS="-w -vv"
 EnvironmentFile=-/etc/default/jackfreqd
 ExecStart=@CMAKE_INSTALL_PREFIX@/bin/jackfreqd $OPTIONS
+Restart=on-failure
+RestartSec=10s
 
 [Install]
 WantedBy=multi-user.target
