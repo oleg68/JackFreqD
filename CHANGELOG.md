@@ -1,4 +1,6 @@
-# 0.2.1 (2021-05-11)
+
+- Eliminatted spamming of steps in the log
+# 0.2.1 (2021-05-15)
 - build on github
 - shell scrips for build
 - build rpm and deb

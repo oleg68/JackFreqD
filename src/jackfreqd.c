@@ -1108,7 +1108,7 @@ int main (int argc, char **argv) {
 				cpu->max_speed / 1000, 
 				cpu->table_size);
 		for(j=0;j<cpu->table_size; j++) {
-			pprintf(3, "     step%d : %ldMhz\n", j+1, 
+			pprintf(4, "     step%d : %ldMhz\n", j+1, 
 					cpu->freq_table[j] / 1000);
 		}
 	}
