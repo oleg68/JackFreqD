@@ -1,5 +1,10 @@
-# 0.2.1 (2021-05-11)
+- Added autorestart on crash https://github.com/oleg68/JackFreqD/issues/1
+- Fixed finding and connecting to pipewire daemons https://github.com/oleg68/JackFreqD/issues/2
+- Eliminatted spamming of steps in the log
+# 0.2.1 (2021-05-15)
+- build on github
 - shell scrips for build
+- build rpm and deb
 - build with cmake https://github.com/oleg68/jackfreqd/issues/3
 - removed unsupported files
 - enhanced logging

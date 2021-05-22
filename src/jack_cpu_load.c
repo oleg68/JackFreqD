@@ -29,28 +29,7 @@
 #include <pthread.h>
 #include <jack/jack.h>
 
-/* prototypes */
-void drop_privileges(char *setgid_group, char *setuid_user);
-void restore_privileges();
-void get_jack_uid();
-
-/* extern globals */
-extern int run;
-extern int jack_reconnect;
-extern pthread_cond_t jack_trigger_cond;
-extern int daemonize;
-extern int verbosity;
-extern char *jack_uid;
-extern char *jack_gid;
-
-#define pprintf(level, ...) do { \
-	if ((level) <= verbosity) { \
-		if (daemonize) \
-			syslog(LOG_INFO, __VA_ARGS__); \
-		else \
-			printf(__VA_ARGS__); \
-	} \
-} while(0)
+#include "globals.h"
 
 jack_client_t *client = NULL;
 
