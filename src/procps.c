@@ -30,6 +30,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "globals.h"
+
 #define LOG_ERR stderr
 
 /* Info about a process. */

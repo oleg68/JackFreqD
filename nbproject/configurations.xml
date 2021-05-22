@@ -66,6 +66,8 @@
             tool="0"
             flavor2="0">
       </item>
+      <item path="src/globals.h" ex="false" tool="3" flavor2="0">
+      </item>
     </conf>
   </confs>
 </configurationDescriptor>

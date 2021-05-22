@@ -37,14 +37,7 @@
 #include <pthread.h>
 #include <sys/fsuid.h>
 
-#define pprintf(level, ...) do { \
-	if ((level) <= verbosity) { \
-		if (daemonize) \
-			syslog(LOG_INFO, __VA_ARGS__); \
-		else \
-			printf(__VA_ARGS__); \
-	} \
-} while(0)
+#include "globals.h"
 
 enum modes {
 	LOWER,
