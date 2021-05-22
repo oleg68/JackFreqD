@@ -1,18 +1,8 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
-/* 
- * File:   globals.h
- * Author: oleg
- *
- * Created on 22 мая 2021 г., 21:40
- */
-
 #ifndef GLOBALS_H
 #define GLOBALS_H
+
+#include <stdio.h>
+#include <syslog.h>
 
 #ifdef __cplusplus
 extern "C" {

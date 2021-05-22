@@ -699,7 +699,7 @@ void get_jack_uid() {
 	jack_gid=calloc(16,sizeof(char));
 	sprintf(jack_uid,"%i", uid);
 	sprintf(jack_gid,"%i", gid);
-	pprintf(1, "jackd: uid:%i gid:%i\n", uid, gid);
+	pprintf(1, "jack: uid:%i gid:%i\n", uid, gid);
 }
 
 /* set process user and group(s) id */
@@ -759,6 +759,13 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 			pprintf(0, "setuid failed.\n");
 			terminate(0);
 		}
+		
+		char xdgDir[32];
+
+		sprintf(xdgDir, "/run/user/%s", setuid_user);
+		if (setenv("XDG_RUNTIME_DIR", xdgDir, 1))
+		  pprintf(0, "Couldn't set XDG_RUNTIME_DIR=%s", xdgDir);
+		
 	}
 }
 

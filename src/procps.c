@@ -32,7 +32,7 @@
 
 #include "globals.h"
 
-#define LOG_ERR stderr
+#define LOG_ERR_FILE stderr
 
 /* Info about a process. */
 typedef struct proc {
@@ -79,11 +79,11 @@ int readproc() {
 
 	/* Open the /proc directory. */
 	if (chdir("/proc") == -1) {
-		fprintf(LOG_ERR, "chdir /proc failed");
+		fprintf(LOG_ERR_FILE, "chdir /proc failed");
 		return -1;
 	}
 	if ((dir = opendir(".")) == NULL) {
-		fprintf(LOG_ERR, "cannot opendir(/proc)");
+		fprintf(LOG_ERR_FILE, "cannot opendir(/proc)");
 		return -1;
 	}
 
@@ -125,7 +125,7 @@ int readproc() {
 				q = strrchr(buf, ')');
 				if (q == NULL) {
 					p->sid = 0;
-					fprintf(LOG_ERR,
+					fprintf(LOG_ERR_FILE,
 					"can't get program name from /proc/%s\n",
 						path);
 					if (p->argv0) free(p->argv0);
@@ -152,7 +152,7 @@ int readproc() {
 					"%*u %lu %lu",
 					&p->sid, &startcode, &endcode) != 3) {
 				p->sid = 0;
-				fprintf(LOG_ERR, "can't read sid from %s\n", path);
+				fprintf(LOG_ERR_FILE, "can't read sid from %s\n", path);
 				if (p->argv0) free(p->argv0);
 				if (p->argv1) free(p->argv1);
 				if (p->statname) free(p->statname);
@@ -239,18 +239,38 @@ int readproc() {
 	return 0;
 }
 
-int get_jack_proc (int *pid, int *gid) {
-	PROC		*p;
-	readproc();
-	for (p = plist; p; p = p->next) {
-		if (p->argv0 && strstr(p->argv0, "jackd") != 0) {
-			//printf("pid:%i '%s' u:%i g:%i\n",p->pid, p->argv0, p->uid, p->gid);
-			if (pid) *pid=p->uid;
-			if (gid) *gid=p->gid;
-			return (0);
-		}
-	}
-	return(-1);
+const char *basename(const char *path) {
+  const char *lastSlash = strrchr(path, '/');
+  
+  return lastSlash != NULL ? lastSlash + 1 : path;
+}
+
+int get_jack_proc (int *pid, int *gid)
+{
+  PROC		*p;
+  
+  readproc();
+  for (p = plist; p; p = p->next)
+    if (p->argv0)
+    {
+      const char *exeName = basename(p->argv0);
+
+      if (strcmp(exeName, "jackd") == 0)
+      {
+	pprintf(1, "Found jackd running; pid:%i '%s' u:%i g:%i\n",p->pid, p->argv0, p->uid, p->gid);
+	if (pid) *pid=p->uid;
+	if (gid) *gid=p->gid;
+	return (0);
+      }
+      if (strcmp(exeName, "pipewire") == 0)
+      {
+	pprintf(1, "Found pipewire running; pid:%i '%s' u:%i g:%i\n",p->pid, p->argv0, p->uid, p->gid);
+	if (pid) *pid=p->uid;
+	if (gid) *gid=p->gid;
+	return (0);
+      }
+    }
+  return(-1);
 }
 
 #ifdef MAIN
