@@ -763,7 +763,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 		char xdgDir[32];
 
 		sprintf(xdgDir, "/run/user/%s", setuid_user);
-		if (setenv("XDG_RUNTIME_DIR", xdgDir, 1))
+		if (setenv("XDG_RUNTIME_DIR", xdgDir, 0))
 		  pprintf(0, "Couldn't set XDG_RUNTIME_DIR=%s", xdgDir);
 		
 	}
