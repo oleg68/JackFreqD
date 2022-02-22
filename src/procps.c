@@ -245,7 +245,7 @@ const char *basename(const char *path) {
   return lastSlash != NULL ? lastSlash + 1 : path;
 }
 
-int get_jack_proc (int *pid, int *gid)
+int get_jack_proc (int *uid, int *gid, int *pid)
 {
   PROC		*p;
   
@@ -258,20 +258,51 @@ int get_jack_proc (int *pid, int *gid)
       if (strcmp(exeName, "jackd") == 0)
       {
 	pprintf(1, "Found jackd running; pid:%i '%s' u:%i g:%i\n",p->pid, p->argv0, p->uid, p->gid);
-	if (pid) *pid=p->uid;
+	if (uid) *uid=p->uid;
 	if (gid) *gid=p->gid;
+	if (pid) *pid=p->pid;
 	return (0);
       }
       if (strcmp(exeName, "pipewire") == 0)
       {
 	pprintf(1, "Found pipewire running; pid:%i '%s' u:%i g:%i\n",p->pid, p->argv0, p->uid, p->gid);
-	if (pid) *pid=p->uid;
+	if (uid) *uid=p->uid;
 	if (gid) *gid=p->gid;
+	if (pid) *pid=p->pid;
 	return (0);
       }
     }
   return(-1);
 }
+
+int get_xdg_runtime_dir(char *pid, char *runtime_dir) {
+	char path[32];
+	char *buf;
+	FILE *fp;
+	int  offset = 0;
+	int  size;
+	
+	sprintf(path, "/proc/%s/environ", pid);
+	if ((fp = fopen(path, "r")) != NULL) {
+		for (size=0; fgetc(fp) != EOF; size++) {}
+		rewind(fp);
+		buf = malloc(size + 1);
+		fread(buf, size, 1, fp);
+		fclose(fp);
+
+		while(offset < size) {
+			if ( strncmp(buf+offset, "XDG_RUNTIME_DIR=", 16) == 0 ) {
+				sprintf(runtime_dir, "%s", buf+offset+16);
+				free(buf);
+				return 0;
+			}
+			offset += strlen(buf+offset) + 1;
+		}
+	}
+	free(buf);
+	return 1;
+}
+
 
 #ifdef MAIN
 int main (int argc, char **argv) {

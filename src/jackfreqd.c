@@ -90,6 +90,7 @@ int use_cpu_load = 0;
 unsigned int poll = 1000; /* in msecs */
 char *jack_uid = NULL;
 char *jack_gid = NULL;
+char *jack_pid = NULL;
 int jack_reconnect = 0;
 unsigned int highwater_dsp = 50;
 unsigned int lowwater_dsp = 10;
@@ -111,7 +112,8 @@ int jjack_open();
 void jjack_close();
 float jjack_poll();
 
-int get_jack_proc (int *pid, int *gid);
+int get_jack_proc (int *uid, int *gid, int *pid);
+int get_xdg_runtime_dir (char *pid, char *runtime_dir);
 
 #define SYSFS_TREE "/sys/devices/system/cpu/"
 #define SYSFS_SETSPEED "scaling_setspeed"
@@ -691,14 +693,17 @@ void terminate(int signum) {
 }
 
 void get_jack_uid() {
-	int uid,gid;
-	if (get_jack_proc (&uid, &gid)) return;
+	int uid,gid,pid;
+	if (get_jack_proc (&uid, &gid, &pid)) return;
 	if (jack_uid) free(jack_uid);
 	if (jack_gid) free(jack_gid);
+	if (jack_pid) free(jack_pid);
 	jack_uid=calloc(16,sizeof(char));
 	jack_gid=calloc(16,sizeof(char));
+	jack_pid=calloc(16,sizeof(char));
 	sprintf(jack_uid,"%i", uid);
 	sprintf(jack_gid,"%i", gid);
+	sprintf(jack_pid,"%i", pid);
 	pprintf(1, "jack: uid:%i gid:%i\n", uid, gid);
 }
 
@@ -762,8 +767,10 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 		
 		char xdgDir[32];
 
-		sprintf(xdgDir, "/run/user/%s", setuid_user);
-		if (setenv("XDG_RUNTIME_DIR", xdgDir, 0))
+		if (get_xdg_runtime_dir(jack_pid, xdgDir))
+		  pprintf(0, "Couldn't get XDG_RUNTIME_DIR from /proc/%s/environ", jack_pid);
+
+		if (setenv("XDG_RUNTIME_DIR", xdgDir, 1))
 		  pprintf(0, "Couldn't set XDG_RUNTIME_DIR=%s", xdgDir);
 		
 	}
