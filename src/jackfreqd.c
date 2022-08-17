@@ -121,7 +121,7 @@ int get_xdg_runtime_dir (char *pid, char *runtime_dir);
 #define PSTATE_MODE_POWERSAVE "powersave"
 #define PSTATE_MODE_PERFORMANCE "performance"
 
-#define VERSION	"0.1.3"
+#define VERSION	"0.2.2-1"
 
 void help(void) {
 
