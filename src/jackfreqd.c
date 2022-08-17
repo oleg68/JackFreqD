@@ -81,6 +81,7 @@ typedef struct cpuinfo {
 cpuinfo_t **all_cpus;
 static char buf[1024];
 int run = 1;
+int shutdown = 0;
 
 /* options */
 int daemonize = 0;
@@ -1156,6 +1157,14 @@ int main (int argc, char **argv) {
 		}
 		pollts.tv_nsec = (pollts.tv_nsec + ((poll%1000)*1000000))%1000000000;
 		pthread_cond_timedwait(&jack_trigger_cond, &poll_wait_lock, &pollts);
+
+		if (jack_reconnect && shutdown) {
+			jjack_close();
+			/* force jjack_open() to call get_jack_uid() on server restart */
+			free(jack_uid);
+			jack_uid = NULL;
+			shutdown=0;
+		}
 
 		float jack_load = jjack_poll();
 		pprintf(4, "dsp load: %.3f\n", jack_load);
