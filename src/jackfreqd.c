@@ -768,7 +768,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 		char xdgDir[32];
 
 		if (get_xdg_runtime_dir(jack_pid, xdgDir))
-		  pprintf(0, "Couldn't get XDG_RUNTIME_DIR from /proc/%s/environ", jack_pid);
+		  pprintf(0, "Couldn't get XDG_RUNTIME_DIR from /proc/%s/environ\n", jack_pid);
 
 		if (setenv("XDG_RUNTIME_DIR", xdgDir, 1))
 		  pprintf(0, "Couldn't set XDG_RUNTIME_DIR=%s", xdgDir);

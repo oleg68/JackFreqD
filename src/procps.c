@@ -277,7 +277,7 @@ int get_jack_proc (int *uid, int *gid, int *pid)
 
 int get_xdg_runtime_dir(char *pid, char *runtime_dir) {
 	char path[32];
-	char *buf;
+	char *buf = NULL;
 	FILE *fp;
 	int  offset = 0;
 	int  size;
@@ -299,7 +299,7 @@ int get_xdg_runtime_dir(char *pid, char *runtime_dir) {
 			offset += strlen(buf+offset) + 1;
 		}
 	}
-	free(buf);
+	if (buf) free(buf);
 	return 1;
 }
 
