@@ -81,6 +81,7 @@ typedef struct cpuinfo {
 cpuinfo_t **all_cpus;
 static char buf[1024];
 int run = 1;
+int shutdown = 0;
 
 /* options */
 int daemonize = 0;
@@ -121,7 +122,7 @@ int get_xdg_runtime_dir (char *pid, char *runtime_dir);
 #define PSTATE_MODE_POWERSAVE "powersave"
 #define PSTATE_MODE_PERFORMANCE "performance"
 
-#define VERSION	"0.1.3"
+#define VERSION	"0.2.2-1"
 
 void help(void) {
 
@@ -768,7 +769,7 @@ void drop_privileges(char *setgid_group, char *setuid_user) {
 		char xdgDir[32];
 
 		if (get_xdg_runtime_dir(jack_pid, xdgDir))
-		  pprintf(0, "Couldn't get XDG_RUNTIME_DIR from /proc/%s/environ", jack_pid);
+		  pprintf(0, "Couldn't get XDG_RUNTIME_DIR from /proc/%s/environ\n", jack_pid);
 
 		if (setenv("XDG_RUNTIME_DIR", xdgDir, 1))
 		  pprintf(0, "Couldn't set XDG_RUNTIME_DIR=%s", xdgDir);
@@ -1156,6 +1157,14 @@ int main (int argc, char **argv) {
 		}
 		pollts.tv_nsec = (pollts.tv_nsec + ((poll%1000)*1000000))%1000000000;
 		pthread_cond_timedwait(&jack_trigger_cond, &poll_wait_lock, &pollts);
+
+		if (jack_reconnect && shutdown) {
+			jjack_close();
+			/* force jjack_open() to call get_jack_uid() on server restart */
+			free(jack_uid);
+			jack_uid = NULL;
+			shutdown=0;
+		}
 
 		float jack_load = jjack_poll();
 		pprintf(4, "dsp load: %.3f\n", jack_load);

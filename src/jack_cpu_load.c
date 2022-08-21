@@ -36,7 +36,7 @@ jack_client_t *client = NULL;
 void jack_shutdown (void *arg) {
 	pprintf (1, "jack-shutdown received.\n");
 	if (jack_reconnect) {
-		client=NULL;
+		shutdown=1;
 	} else {
 		run=0;
 	}

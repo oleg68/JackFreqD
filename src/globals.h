@@ -11,6 +11,7 @@ extern "C" {
 /* extern globals */
 extern int run;
 extern int jack_reconnect;
+extern int shutdown;
 extern pthread_cond_t jack_trigger_cond;
 extern int daemonize;
 extern int verbosity;
