@@ -1,3 +1,6 @@
+# 0.2.3 (2022-09-01)
+- Added terminate client threads when PipeWire server shuts down
+- fixet setting of XDG_RUNTIME_DIR
 # 0.2.2 (2021-05-22)
 - Added autorestart on crash https://github.com/oleg68/JackFreqD/issues/1
 - Fixed finding and connecting to pipewire daemons https://github.com/oleg68/JackFreqD/issues/2
