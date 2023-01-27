@@ -1,3 +1,5 @@
+# 0.2.4 (2023-01-27)
+- Fixed unability to connect to the jack if -j was specified
 # 0.2.3 (2022-09-01)
 - Added terminate client threads when PipeWire server shuts down
 - fixet setting of XDG_RUNTIME_DIR

@@ -111,7 +111,7 @@ time_t start_time = 0;
 #define PSTATE_MODE_POWERSAVE "powersave"
 #define PSTATE_MODE_PERFORMANCE "performance"
 
-#define VERSION	"0.2.3-1"
+#define VERSION	"0.2.4-1"
 
 void help(void) {
 
