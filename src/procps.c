@@ -245,44 +245,47 @@ const char *basename(const char *path) {
   return lastSlash != NULL ? lastSlash + 1 : path;
 }
 
-int get_jack_proc (int *uid, int *gid, int *pid)
+int get_jack_proc(
+  int filter_uid, int filter_gid, ProcessInfo *jack_server_process
+)
 {
   PROC		*p;
-  
+
+  jack_server_process->pid = 0;
   readproc();
+
   for (p = plist; p; p = p->next)
     if (p->argv0)
     {
       const char *exeName = basename(p->argv0);
 
-      if (strcmp(exeName, "jackd") == 0)
+      if (
+	(strcmp(exeName, "jackd") == 0 || strcmp(exeName, "pipewire") == 0)
+	&& (!filter_uid || p->uid == filter_uid)
+	&& (!filter_gid || p->gid == filter_gid)
+      )
       {
-	pprintf(1, "Found jackd running; pid:%i '%s' u:%i g:%i\n",p->pid, p->argv0, p->uid, p->gid);
-	if (uid) *uid=p->uid;
-	if (gid) *gid=p->gid;
-	if (pid) *pid=p->pid;
-	return (0);
-      }
-      if (strcmp(exeName, "pipewire") == 0)
-      {
-	pprintf(1, "Found pipewire running; pid:%i '%s' u:%i g:%i\n",p->pid, p->argv0, p->uid, p->gid);
-	if (uid) *uid=p->uid;
-	if (gid) *gid=p->gid;
-	if (pid) *pid=p->pid;
-	return (0);
+	pprintf(
+	  1, "Found %s running; pid:%i '%s' u:%i g:%i\n",
+	  exeName, p->pid, p->argv0, p->uid, p->gid
+        );
+	jack_server_process->uid = p->uid;
+	jack_server_process->gid = p->gid;
+	jack_server_process->pid = p->pid;
+	break;
       }
     }
-  return(-1);
+  return jack_server_process->pid != 0;
 }
 
-int get_xdg_runtime_dir(char *pid, char *runtime_dir) {
+int get_xdg_runtime_dir(int pid, char *runtime_dir) {
 	char path[32];
 	char *buf = NULL;
 	FILE *fp;
 	int  offset = 0;
 	int  size;
 	
-	sprintf(path, "/proc/%s/environ", pid);
+	sprintf(path, "/proc/%i/environ", pid);
 	if ((fp = fopen(path, "r")) != NULL) {
 		for (size=0; fgetc(fp) != EOF; size++) {}
 		rewind(fp);

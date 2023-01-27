@@ -2,12 +2,33 @@
 <configurationDescriptor version="100">
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df root="/home/oleg/my-projects/JackFreqD" name="0">
+      <df name="build">
+        <df name="CMakeFiles">
+          <df name="3.22.2">
+            <df name="CompilerIdC">
+              <in>CMakeCCompilerId.c</in>
+            </df>
+          </df>
+          <df name="3.25.1">
+            <df name="CompilerIdC">
+              <in>CMakeCCompilerId.c</in>
+            </df>
+          </df>
+        </df>
+      </df>
       <df name="src">
         <in>jack_cpu_load.c</in>
         <in>jackfreqd.c</in>
         <in>procps.c</in>
       </df>
     </df>
+    <logicalFolder name="Modules"
+                   displayName="Modules"
+                   projectFiles="true"
+                   root="/usr/share/cmake/Modules">
+      <itemPath>/usr/share/cmake/Modules/CMakeCCompilerABI.c</itemPath>
+      <itemPath>/usr/share/cmake/Modules/CMakeCompilerABI.h</itemPath>
+    </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Важные файлы"
                    projectFiles="false"
@@ -37,20 +58,22 @@
           <buildCommand>${MAKE} -f Makefile</buildCommand>
           <cleanCommand>${MAKE} -f Makefile clean</cleanCommand>
           <executablePath>/home/oleg/my-projects/JackFreqD/build/jackfreqd</executablePath>
-          <cTool>
-            <incDir>
-              <pElem>build</pElem>
-            </incDir>
-            <preprocessorList>
-              <Elem>_REENTRANT</Elem>
-            </preprocessorList>
-          </cTool>
         </makeTool>
         <preBuild>
           <preBuildCommandWorkingDir>/home/oleg/my-projects/JackFreqD/build</preBuildCommandWorkingDir>
           <preBuildCommand>${CMAKE} -G "Unix Makefiles" ..</preBuildCommand>
         </preBuild>
       </makefileType>
+      <item path="/home/oleg/my-projects/JackFreqD/build/CMakeFiles/3.22.2/CompilerIdC/CMakeCCompilerId.c"
+            ex="false"
+            tool="0"
+            flavor2="2">
+      </item>
+      <item path="/home/oleg/my-projects/JackFreqD/build/CMakeFiles/3.25.1/CompilerIdC/CMakeCCompilerId.c"
+            ex="false"
+            tool="0"
+            flavor2="0">
+      </item>
       <item path="/home/oleg/my-projects/JackFreqD/src/jack_cpu_load.c"
             ex="false"
             tool="0"
@@ -66,8 +89,28 @@
             tool="0"
             flavor2="0">
       </item>
-      <item path="src/globals.h" ex="false" tool="3" flavor2="0">
+      <item path="/usr/share/cmake/Modules/CMakeCCompilerABI.c"
+            ex="false"
+            tool="0"
+            flavor2="0">
       </item>
+      <folder path="0/src">
+        <cTool>
+          <incDir>
+            <pElem>build</pElem>
+          </incDir>
+          <preprocessorList>
+            <Elem>_REENTRANT</Elem>
+          </preprocessorList>
+        </cTool>
+      </folder>
+      <folder path="Modules">
+        <cTool>
+          <incDir>
+            <pElem>build/CMakeFiles/CMakeScratch/TryCompile-9iFouX</pElem>
+          </incDir>
+        </cTool>
+      </folder>
     </conf>
   </confs>
 </configurationDescriptor>

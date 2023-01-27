@@ -89,9 +89,6 @@ int verbosity = 0;
 int ignore_nice = 1;
 int use_cpu_load = 0;
 unsigned int poll = 1000; /* in msecs */
-char *jack_uid = NULL;
-char *jack_gid = NULL;
-char *jack_pid = NULL;
 int jack_reconnect = 0;
 unsigned int highwater_dsp = 50;
 unsigned int lowwater_dsp = 10;
@@ -107,14 +104,6 @@ pthread_cond_t  jack_trigger_cond = PTHREAD_COND_INITIALIZER;
 /* statistics */
 unsigned int change_speed_count = 0;
 time_t start_time = 0;
-
-/** prototypes */
-int jjack_open();
-void jjack_close();
-float jjack_poll();
-
-int get_jack_proc (int *uid, int *gid, int *pid);
-int get_xdg_runtime_dir (char *pid, char *runtime_dir);
 
 #define SYSFS_TREE "/sys/devices/system/cpu/"
 #define SYSFS_SETSPEED "scaling_setspeed"
@@ -676,8 +665,6 @@ void terminate(int signum) {
 	}
 	pprintf(4,"exiting: cleaning up 2/2.\n");
 	free(all_cpus);
-	if (jack_uid) free(jack_uid);
-	if (jack_gid) free(jack_gid);
 
 	pprintf(4,"exiting: closing JACK connection\n");
 	jjack_close();
@@ -693,99 +680,45 @@ void terminate(int signum) {
 	exit(0);
 }
 
-void get_jack_uid() {
-	int uid,gid,pid;
-	if (get_jack_proc (&uid, &gid, &pid)) return;
-	if (jack_uid) free(jack_uid);
-	if (jack_gid) free(jack_gid);
-	if (jack_pid) free(jack_pid);
-	jack_uid=calloc(16,sizeof(char));
-	jack_gid=calloc(16,sizeof(char));
-	jack_pid=calloc(16,sizeof(char));
-	sprintf(jack_uid,"%i", uid);
-	sprintf(jack_gid,"%i", gid);
-	sprintf(jack_pid,"%i", pid);
-	pprintf(1, "jack: uid:%i gid:%i\n", uid, gid);
-}
-
 /* set process user and group(s) id */
-void drop_privileges(char *setgid_group, char *setuid_user) {
-	uid_t uid=0, gid=0;
-	struct group *gr;
-	struct passwd *pw;
+void drop_privileges(const ProcessInfo *jack_server_process) {
+  if (jack_server_process->uid || jack_server_process->gid)
+    pprintf(
+      4, "set user: uid:%i gid:%i -> uid:%i gid:%i\n",
+      getuid(), getgid(), jack_server_process->uid, jack_server_process->gid
+    );
 
-	/* Get the integer values */
-	if(setgid_group) {
-		gr=getgrnam(setgid_group);
-		if(gr) 
-			gid=gr->gr_gid;
-		else if(atoi(setgid_group)) /* numerical? */
-			gid=atoi(setgid_group);
-		else {
-			pprintf(0, "Failed to get GID for group %s\n", setgid_group);
-			terminate(0);
-		}
-	}
-	if(setuid_user) {
-		pw=getpwnam(setuid_user);
-		if(pw)
-			uid=pw->pw_uid;
-		else if(atoi(setuid_user)) /* numerical? */
-			uid=atoi(setuid_user);
-		else {
-			pprintf(0, "Failed to get UID for user %s\n", setuid_user);
-			terminate(0);
-		}
-	}
-	if (gid || uid) 
-		pprintf(4, "set user: uid:%i gid:%i  -> uid:%i gid:%i\n",
-				getuid(),getgid(),uid,gid);
+  /* Set uid and gid */
+  if (jack_server_process->gid)
+    if (setresgid(jack_server_process->gid, jack_server_process->gid, (uid_t)0))
+    {
+      pprintf(0, "setgid failed.\n");
+      terminate(0);
+    }
+  if (jack_server_process->uid)
+    if (setresuid(jack_server_process->uid, jack_server_process->uid, (uid_t)0))
+    {
+      pprintf(0, "setuid failed.\n");
+      terminate(0);
+    }
+  if (jack_server_process->pid) {
+    char xdgDir[32];
 
-	/* Set uid and gid */
-	if(gid) {
-#if 0
-		if(setfsgid(gid)) {
-			pprintf(0, "setfsgid failed.\n");
-			terminate(0);
-		}
-#endif
-		if(setresgid(gid, gid, (uid_t)0)) {
-			pprintf(0, "setgid failed.\n");
-			terminate(0);
-		}
-	}
-	if(uid) {
-#if 0
-		if(setfsuid(uid)) {
-			pprintf(0, "setfsuid failed.\n");
-			terminate(0);
-		}
-#endif
-		if(setresuid(uid, uid, (uid_t)0)) {
-			pprintf(0, "setuid failed.\n");
-			terminate(0);
-		}
-		
-		char xdgDir[32];
+    if (get_xdg_runtime_dir(jack_server_process->pid, xdgDir))
+      pprintf(
+	0, "Couldn't get XDG_RUNTIME_DIR from /proc/%i/environ\n",
+	jack_server_process->pid
+      );
 
-		if (get_xdg_runtime_dir(jack_pid, xdgDir))
-		  pprintf(0, "Couldn't get XDG_RUNTIME_DIR from /proc/%s/environ\n", jack_pid);
-
-		if (setenv("XDG_RUNTIME_DIR", xdgDir, 1))
-		  pprintf(0, "Couldn't set XDG_RUNTIME_DIR=%s", xdgDir);
-		
-	}
+    if (setenv("XDG_RUNTIME_DIR", xdgDir, 1))
+      pprintf(0, "Couldn't set XDG_RUNTIME_DIR=%s", xdgDir);
+  }
 }
 
 void restore_privileges() {
-	setresuid((uid_t)-1, (uid_t)0, (uid_t)0);
-	setresgid((uid_t)-1, (uid_t)0, (uid_t)0);
-#if 0
-	setfsgid((uid_t)0);
-	setfsuid((uid_t)0);
-#endif
+  setresuid((uid_t)-1, (uid_t)0, (uid_t)0);
+  setresgid((uid_t)-1, (uid_t)0, (uid_t)0);
 }
-
 
 /* Generic x86 cpuid function lifted from kernel sources */
 /*
@@ -905,6 +838,9 @@ int determine_threads_per_core(int ncpus) {
 }
 
 int main (int argc, char **argv) {
+        int filter_uid = 0;
+        int filter_gid = 0;
+	ProcessInfo jack_server_process;
 	cpuinfo_t *cpu;
 	int ncpus, i, j, err, num_real_cpus, threads_per_core, cpubase;
 	struct timespec pollts;
@@ -999,12 +935,10 @@ int main (int argc, char **argv) {
 				pprintf(2,"Using lower pct of %d%%\n",lowwater_cpu);
 				break;
 			case 'j':
-				if (jack_uid) free(jack_uid);
-				jack_uid = strdup(optarg);
+				filter_uid = atoi(optarg);
 				break;
 			case 'J':
-				if (jack_gid) free(jack_gid);
-				jack_gid = strdup(optarg);
+				filter_gid = atoi(optarg);
 				break;
 			case 'w':
 				jack_reconnect =1;
@@ -1120,31 +1054,17 @@ int main (int argc, char **argv) {
 					cpu->freq_table[j] / 1000);
 		}
 	}
-
-	if (!jack_uid && !jack_gid) {
-		get_jack_uid();
-	}
-
-	if (!jack_uid && !jack_reconnect) {
-		pprintf(0, "No JACK-uid given or detected.\n");
-		terminate(0);
-	}
+	jack_server_process.pid = 0;
 
 	/* need to deaemonize before connecting to jackd */
 	if (daemonize)
 		daemon(0, 0);
-
-	if (jjack_open() && !jack_reconnect) {
-		pprintf(0, "Failed to connect to jackd\n");
-		terminate(0);
-	}
 
 	/* now that everything's all set up, lets set up a exit handler */
 	signal(SIGTERM, terminate);
 	signal(SIGINT, terminate);
 	
 	start_time = time(NULL);
-
 
 	pthread_mutex_lock(&poll_wait_lock);
 
@@ -1158,15 +1078,40 @@ int main (int argc, char **argv) {
 		pollts.tv_nsec = (pollts.tv_nsec + ((poll%1000)*1000000))%1000000000;
 		pthread_cond_timedwait(&jack_trigger_cond, &poll_wait_lock, &pollts);
 
-		if (jack_reconnect && shutdown) {
-			jjack_close();
-			/* force jjack_open() to call get_jack_uid() on server restart */
-			free(jack_uid);
-			jack_uid = NULL;
-			shutdown=0;
+		if (! jjack_is_open()) {
+		  if (! jack_server_process.pid) {
+		    get_jack_proc(filter_uid, filter_gid, &jack_server_process);
+
+		    if (!jack_server_process.pid)
+		      if (jack_reconnect)
+			continue;
+		      else {
+			pprintf(0, "No JACK-process detected.\n");
+			break;
+		      }
+		  }
+		  if (jjack_open(&jack_server_process))
+		    if (jack_reconnect)
+		      continue;
+		    else {
+		      pprintf(0, "Failed to connect to jackd\n");
+		      break;
+		    }
 		}
 
 		float jack_load = jjack_poll();
+
+		if (shutdown) {
+		  jjack_close();
+		  if (jack_reconnect) {
+		    /* force jjack_open() to call get_jack_uid() on server restart */
+		    jack_server_process.pid = 0;
+		    shutdown=0;
+		    continue;
+		  } else
+		    break;
+		}
+
 		pprintf(4, "dsp load: %.3f\n", jack_load);
 
 		for(i=0; i<num_real_cpus; i++) {
@@ -1182,12 +1127,7 @@ int main (int argc, char **argv) {
 			}
 			if (change != SAME) {
 				if ((err=change_speed(all_cpus[cpubase], change))) {
-#if 0
-					pprintf(0, "changing CPU speed failed.\n");
-					terminate(0);
-#else 
 					pprintf(2, "changing CPU speed failed.\n");
-#endif
 				} else {
 					pprintf(2, "changed CPU speed %s\n", change < SAME ? "LOWER" : "UP");
 				}

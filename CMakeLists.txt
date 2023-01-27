@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.0)
 cmake_minimum_required(VERSION 3.10)
 
 if(NOT VERSION)
-  set(VERSION "0.2.1")
+  set(VERSION "0.2.4")
 endif()
 
 if(NOT BUILD_VERSION)
